@@ -1,4 +1,4 @@
-import 'package:bitewise/auth/auth_viewmodel.dart';
+import 'package:bitewise/viewmodel/auth_viewmodel.dart';
 import 'package:bitewise/utils/color.dart';
 import 'package:bitewise/utils/image.dart';
 import 'package:flutter/gestures.dart';
@@ -40,7 +40,8 @@ class _AuthViewState extends State<AuthView> {
                   _buildTextField(
                     controller: viewmodel.nameController,
                     label: 'Full Name',
-                    validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
+                    validator: (value) =>
+                        value!.isEmpty ? 'Please enter your name' : null,
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -49,7 +50,8 @@ class _AuthViewState extends State<AuthView> {
                 _buildTextField(
                   controller: viewmodel.emailController,
                   label: 'Email',
-                  validator: (value) => value!.isEmpty ? 'Please enter your email' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Please enter your email' : null,
                 ),
                 const SizedBox(height: 16),
 
@@ -58,7 +60,8 @@ class _AuthViewState extends State<AuthView> {
                   _buildTextField(
                     controller: viewmodel.phoneController,
                     label: 'Phone Number',
-                    validator: (value) => value!.isEmpty ? 'Please enter your phone' : null,
+                    validator: (value) =>
+                        value!.isEmpty ? 'Please enter your phone' : null,
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -69,10 +72,12 @@ class _AuthViewState extends State<AuthView> {
                   label: 'Password',
                   obscureText: viewmodel.obscurePassword,
                   suffixIcon: IconButton(
-                    icon: ImageTransformers(ImageConstants.passwordHintEye).icon,
+                    icon:
+                        ImageTransformers(ImageConstants.passwordHintEye).icon,
                     onPressed: viewmodel.togglePasswordVisibility,
                   ),
-                  validator: (value) => value!.isEmpty ? 'Please enter password' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Please enter password' : null,
                 ),
                 const SizedBox(height: 8),
 
@@ -126,11 +131,13 @@ class _AuthViewState extends State<AuthView> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          viewmodel.submitForm(context);
-                        }
-                      },
+                      onPressed: viewmodel.isLoading
+                          ? null
+                          : () {
+                              if (_formKey.currentState?.validate() ?? false) {
+                                viewmodel.submitForm(context);
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ColorUtil.primaryColor,
                         shape: RoundedRectangleBorder(
@@ -138,10 +145,21 @@ class _AuthViewState extends State<AuthView> {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: Text(
-                        viewmodel.mode == AuthMode.login ? "Login" : "Sign Up",
-                        style: const TextStyle(color: Colors.white),
-                      ),
+                      child: viewmodel.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              viewmodel.mode == AuthMode.login
+                                  ? "Login"
+                                  : "Sign Up",
+                              style: const TextStyle(color: Colors.white),
+                            ),
                     ),
                   ),
                 ),
@@ -152,12 +170,17 @@ class _AuthViewState extends State<AuthView> {
                   child: RichText(
                     text: TextSpan(children: [
                       TextSpan(
-                        text: viewmodel.mode == AuthMode.login ? "Don't have an account? " : "Already have an account? ",
+                        text: viewmodel.mode == AuthMode.login
+                            ? "Don't have an account? "
+                            : "Already have an account? ",
                         style: const TextStyle(color: Colors.black),
                       ),
                       TextSpan(
-                        recognizer: TapGestureRecognizer()..onTap = viewmodel.toggleMode,
-                        text: viewmodel.mode == AuthMode.login ? "Sign Up" : "Log In",
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = viewmodel.toggleMode,
+                        text: viewmodel.mode == AuthMode.login
+                            ? "Sign Up"
+                            : "Log In",
                         style: TextStyle(color: ColorUtil.primaryColor),
                       ),
                     ]),

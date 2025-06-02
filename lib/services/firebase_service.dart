@@ -1,0 +1,189 @@
+import 'package:bitewise/models/activity_level.dart';
+import 'package:bitewise/models/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:bitewise/data/mock_meals.dart';
+import 'package:bitewise/models/meal_model.dart';
+import 'package:bitewise/models/meal_plan_model.dart';
+
+class FirebaseService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Get current user
+  User? get currentUser => _auth.currentUser;
+
+  // Sign up with email and password
+  Future<UserCredential> signUp({
+    required String email,
+    required String password,
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      // Create user in Firebase Auth
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Create initial user document in Firestore
+      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'createdAt': FieldValue.serverTimestamp(),
+        // Initialize with default values
+        'height': 170.0,
+        'weight': 70.0,
+        'activityLevel': ActivityLevel.sedentary.toString(),
+        'dietaryRestrictions': [],
+        'healthGoals': [],
+        'dailyCalorieTarget': 2000,
+      });
+
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'weak-password') {
+        throw Exception('The password provided is too weak.');
+      } else if (e.code == 'email-already-in-use') {
+        throw Exception('An account already exists for that email.');
+      }
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Failed to sign up: $e');
+    }
+  }
+
+  // Sign in with email and password
+  Future<UserCredential> signIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      return await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        throw Exception('No user found for that email.');
+      } else if (e.code == 'wrong-password') {
+        throw Exception('Wrong password provided.');
+      }
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Failed to sign in: $e');
+    }
+  }
+
+  // Sign out
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+
+  // Check if user is logged in
+  bool isUserLoggedIn() {
+    return _auth.currentUser != null;
+  }
+
+  // Get user data from Firestore
+  Future<Map<String, dynamic>?> getUserData(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Failed to get user data: $e');
+    }
+  }
+
+  // Save user preferences
+  Future<void> saveUserPreferences({
+    required String userId,
+    required UserModel userModel,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'height': userModel.height,
+        'weight': userModel.weight,
+        'activityLevel': userModel.activityLevel.toString(),
+        'dietaryRestrictions':
+            userModel.dietaryRestrictions.map((e) => e.toString()).toList(),
+        'healthGoals': userModel.healthGoals.map((e) => e.toString()).toList(),
+        'dailyCalorieTarget': userModel.dailyCalorieTarget,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to save preferences: $e');
+    }
+  }
+
+  Future<void> addMockMeals() async {
+    final batch = _firestore.batch();
+
+    for (var mealData in mockMeals) {
+      final docRef = _firestore.collection('meals').doc();
+      final meal = Meal(
+        id: docRef.id,
+        name: mealData['name'],
+        description: mealData['description'],
+        imageUrl: mealData['imageUrl'],
+        ingredients: List<String>.from(mealData['ingredients']),
+        instructions: List<String>.from(mealData['instructions']),
+        calories: mealData['calories'],
+        protein: mealData['protein'],
+        carbs: mealData['carbs'],
+        fat: mealData['fat'],
+        mealTypes: List<MealType>.from(mealData['mealTypes']),
+        categories: List<MealCategory>.from(mealData['categories']),
+        allergens: List<String>.from(mealData['allergens']),
+        isUserCreated: mealData['isUserCreated'],
+        isPublic: mealData['isPublic'],
+        rating: mealData['rating'],
+        reviewCount: mealData['reviewCount'],
+        createdAt: DateTime.now(),
+      );
+
+      batch.set(docRef, meal.toMap());
+    }
+
+    await batch.commit();
+  }
+
+  Future<List<Meal>> getMeals() async {
+    try {
+      final snapshot = await _firestore
+          .collection('meals')
+          .where('isPublic', isEqualTo: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => Meal.fromMap(doc.id, doc.data()))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to fetch meals: $e');
+    }
+  }
+
+  Future<MealPlan?> getFirstMealPlan() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('mealPlans').limit(1).get();
+
+    if (snapshot.docs.isEmpty) return null;
+    return MealPlan.fromDoc(snapshot.docs.first);
+  }
+
+  Future<List<Meal>> getMealsByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    final snapshot = await FirebaseFirestore.instance
+        .collection('meals')
+        .where(FieldPath.documentId, whereIn: ids)
+        .get();
+    return snapshot.docs
+        .map((doc) => Meal.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+}

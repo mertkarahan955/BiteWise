@@ -1,18 +1,22 @@
-import 'package:bitewise/auth/auth_view.dart';
-import 'package:bitewise/auth/auth_viewmodel.dart';
-import 'package:bitewise/onboarding/onboarding_view.dart';
-import 'package:bitewise/onboarding/onboarding_viewmodel.dart';
-import 'package:bitewise/splash/splash_view.dart';
-import 'package:bitewise/splash/splash_viewmodel.dart';
-import 'package:bitewise/utils/locator.dart';
+import 'package:bitewise/models/user_model.dart';
+import 'package:bitewise/view/auth_view.dart';
+import 'package:bitewise/viewmodel/auth_viewmodel.dart';
+import 'package:bitewise/view/onboarding_view.dart';
+import 'package:bitewise/viewmodel/onboarding_viewmodel.dart';
+import 'package:bitewise/view/splash_view.dart';
+import 'package:bitewise/viewmodel/splash_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:bitewise/viewmodel/profile_viewmodel.dart';
+import 'package:bitewise/view/profile_view.dart';
+import 'package:bitewise/view/layout/main_layout.dart';
 
 class Routes {
   static const String splashPageKey = '/';
   static const String onboardingPageKey = '/onboarding';
   static const String authPageKey = '/auth';
   static const String homePageKey = '/home';
+  static const String profilePageKey = '/profile';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -33,14 +37,46 @@ class Routes {
           ),
         );
       case authPageKey:
-        // Get the initial mode from arguments (defaults to login)
-        final initialMode = settings.arguments as AuthMode? ?? AuthMode.signup;
+        final args = settings.arguments;
+        AuthMode initialMode;
+        UserModel? preferences;
+
+        if (args is Map<String, dynamic>) {
+          initialMode = args['mode'] as AuthMode? ?? AuthMode.login;
+          preferences = args['preferences'] as UserModel?;
+        } else {
+          initialMode = args as AuthMode? ?? AuthMode.login;
+        }
+
         return _buildRoute(
           settings,
           ChangeNotifierProvider(
-            create: (context) => locator<AuthViewmodel>(param1: initialMode),
-            child: AuthView(),
+            create: (context) {
+              final viewModel = AuthViewmodel(initialMode: initialMode);
+              if (preferences != null) {
+                viewModel.setOnboardingPreferences(preferences);
+              }
+              return viewModel;
+            },
+            child: const AuthView(),
           ),
+        );
+      case profilePageKey:
+        return _buildRoute(
+          settings,
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider(
+                create: (context) => ProfileViewmodel()..loadUserProfile(),
+              ),
+            ],
+            child: const ProfileView(),
+          ),
+        );
+      case homePageKey:
+        return _buildRoute(
+          settings,
+          const MainLayout(),
         );
       default:
         return _buildRoute(
@@ -63,7 +99,8 @@ class Routes {
         const end = Offset.zero;
         const curve = Curves.easeInOut;
 
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        var tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
         var offsetAnimation = animation.drive(tween);
 
         return SlideTransition(

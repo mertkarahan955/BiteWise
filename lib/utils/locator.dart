@@ -1,6 +1,6 @@
-import 'package:bitewise/auth/auth_view.dart';
-import 'package:bitewise/auth/auth_viewmodel.dart';
-import 'package:bitewise/auth/repo/auth_repository.dart';
+import 'package:bitewise/view/auth_view.dart';
+import 'package:bitewise/viewmodel/auth_viewmodel.dart';
+import 'package:bitewise/repositories/auth_repository.dart';
 import 'package:get_it/get_it.dart';
 
 GetIt locator = GetIt.instance;
