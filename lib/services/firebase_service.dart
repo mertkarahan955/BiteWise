@@ -186,4 +186,53 @@ class FirebaseService {
         .map((doc) => Meal.fromMap(doc.id, doc.data()))
         .toList();
   }
+
+  Future<void> createBulkMealPlans() async {
+    final firestore = FirebaseFirestore.instance;
+    final DateTime today = DateTime.now();
+    for (int i = 0; i < 4; i++) {
+      final DateTime weekStart = today.add(Duration(days: i * 7));
+      final mealPlanData = {
+        'startDate': Timestamp.fromDate(weekStart),
+        'days': [
+          {
+            'dayOfWeek': 'Monday',
+            'meals': [
+              {'mealId': 'meal1', 'mealType': 'breakfast'},
+              {'mealId': 'meal2', 'mealType': 'lunch'},
+              {'mealId': 'meal3', 'mealType': 'dinner'},
+            ]
+          },
+          {
+            'dayOfWeek': 'Tuesday',
+            'meals': [
+              {'mealId': 'meal4', 'mealType': 'breakfast'},
+              {'mealId': 'meal5', 'mealType': 'lunch'},
+              {'mealId': 'meal6', 'mealType': 'dinner'},
+            ]
+          },
+          // ... add more days as needed ...
+        ],
+      };
+      await firestore.collection('mealPlansMock').add(mealPlanData);
+    }
+  }
+
+  Future<DocumentSnapshot?> getMealPlanForWeek(DateTime referenceDate) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('mealPlans')
+        .where('startDate',
+            isLessThanOrEqualTo: Timestamp.fromDate(referenceDate))
+        .where('endDate',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(referenceDate))
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      print(snapshot.docs.first.data());
+      return snapshot.docs.first;
+    }
+    print('No meal plan found for the week ${referenceDate.toString()}');
+    return null;
+  }
 }

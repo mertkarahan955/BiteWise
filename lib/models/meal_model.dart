@@ -1,6 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum MealType { breakfast, lunch, dinner, snack, dessert, beverage }
+enum MealType {
+  breakfast,
+  lunch,
+  dinner,
+  snack,
+  dessert,
+  beverage;
+}
+
+String getMealTypeLabel(MealType type) {
+  switch (type) {
+    case MealType.breakfast:
+      return 'Breakfast';
+    case MealType.lunch:
+      return 'Lunch';
+    case MealType.dinner:
+      return 'Dinner';
+    case MealType.snack:
+      return 'Snack';
+    case MealType.dessert:
+      return 'Dessert';
+    case MealType.beverage:
+      return 'Beverage';
+  }
+}
 
 enum MealCategory {
   vegetarian,

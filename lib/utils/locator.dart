@@ -1,3 +1,4 @@
+import 'package:bitewise/services/firebase_service.dart';
 import 'package:bitewise/view/auth_view.dart';
 import 'package:bitewise/viewmodel/auth_viewmodel.dart';
 import 'package:bitewise/repositories/auth_repository.dart';
@@ -10,4 +11,5 @@ setupLocator() {
   locator.registerFactoryParam<AuthViewmodel, AuthMode, void>((initialMode, _) {
     return AuthViewmodel(initialMode: initialMode);
   });
+  locator.registerLazySingleton(() => FirebaseService());
 }

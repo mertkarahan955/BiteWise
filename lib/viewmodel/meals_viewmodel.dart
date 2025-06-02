@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:bitewise/models/meal_model.dart';
 import 'package:bitewise/models/meal_plan_model.dart';
@@ -44,5 +45,41 @@ class MealsViewmodel extends ChangeNotifier {
 
   Meal? getMealById(String id) {
     return _meals.firstWhere((m) => m.id == id);
+  }
+
+  Future<void> loadMealPlanByWeek(String selectedWeek) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      DateTime referenceDate;
+      if (selectedWeek == 'This Week') {
+        referenceDate = DateTime.now();
+      } else {
+        final now = DateTime.now();
+        referenceDate = now.add(Duration(days: 8 - now.weekday)); // next Monday
+      }
+
+      final planData = await _firebaseService.getMealPlanForWeek(referenceDate);
+      if (planData != null) {
+        _mealPlan = MealPlan.fromDoc(planData);
+
+        final mealIds = _mealPlan!.days
+            .expand((d) => d.meals)
+            .map((e) => e.mealId)
+            .toSet()
+            .toList();
+
+        _meals = await _firebaseService.getMealsByIds(mealIds);
+      } else {
+        _mealPlan = null;
+      }
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

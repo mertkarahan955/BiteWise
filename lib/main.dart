@@ -29,7 +29,7 @@ class MainApp extends StatelessWidget {
           create: (_) => AuthViewmodel(initialMode: AuthMode.login),
         ),
         Provider<FirebaseService>(
-          create: (_) => FirebaseService(),
+          create: (_) => locator<FirebaseService>(),
         ),
       ],
       child: MaterialApp(
