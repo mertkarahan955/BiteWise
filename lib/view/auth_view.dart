@@ -40,8 +40,6 @@ class _AuthViewState extends State<AuthView> {
                   _buildTextField(
                     controller: viewmodel.nameController,
                     label: 'Full Name',
-                    validator: (value) =>
-                        value!.isEmpty ? 'Please enter your name' : null,
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -50,8 +48,6 @@ class _AuthViewState extends State<AuthView> {
                 _buildTextField(
                   controller: viewmodel.emailController,
                   label: 'Email',
-                  validator: (value) =>
-                      value!.isEmpty ? 'Please enter your email' : null,
                 ),
                 const SizedBox(height: 16),
 
@@ -60,8 +56,6 @@ class _AuthViewState extends State<AuthView> {
                   _buildTextField(
                     controller: viewmodel.phoneController,
                     label: 'Phone Number',
-                    validator: (value) =>
-                        value!.isEmpty ? 'Please enter your phone' : null,
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -76,8 +70,6 @@ class _AuthViewState extends State<AuthView> {
                         ImageTransformers(ImageConstants.passwordHintEye).icon,
                     onPressed: viewmodel.togglePasswordVisibility,
                   ),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Please enter password' : null,
                 ),
                 const SizedBox(height: 8),
 
@@ -134,9 +126,10 @@ class _AuthViewState extends State<AuthView> {
                       onPressed: viewmodel.isLoading
                           ? null
                           : () {
-                              if (_formKey.currentState?.validate() ?? false) {
-                                viewmodel.submitForm(context);
-                              }
+                              viewmodel.submitForm(context,
+                                  isFormValid:
+                                      _formKey.currentState?.validate() ??
+                                          false);
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ColorUtil.primaryColor,
@@ -200,9 +193,8 @@ class _AuthViewState extends State<AuthView> {
     required String label,
     bool obscureText = false,
     Widget? suffixIcon,
-    String? Function(String?)? validator,
   }) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       obscureText: obscureText,
       decoration: InputDecoration(

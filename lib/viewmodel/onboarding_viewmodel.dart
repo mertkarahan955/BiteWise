@@ -5,6 +5,8 @@ import 'package:bitewise/models/user_model.dart';
 import 'package:bitewise/utils/routes.dart';
 import 'package:bitewise/view/auth_view.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_ai/firebase_ai.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingViewmodel extends ChangeNotifier {
   List<CommonAllergens> dietaryRestrictions = [];
@@ -18,6 +20,13 @@ class OnboardingViewmodel extends ChangeNotifier {
   String _searchQuery = '';
   List<CommonAllergens> _searchResults = [];
   bool _isSearching = false;
+
+  int? aiCalorieRecommendation;
+  int? aiProteinTarget;
+  int? aiFatTarget;
+  int? aiCarbTarget;
+  bool isFetchingCalorieRecommendation = false;
+  String? aiError;
 
   String get searchQuery => _searchQuery;
   List<CommonAllergens> get searchResults => _searchResults;
@@ -98,14 +107,60 @@ class OnboardingViewmodel extends ChangeNotifier {
   }
 
   Future<void> finalizeOnboarding(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_seen', true);
     if (Navigator.canPop(context)) {
       Navigator.pop(context, userPreferences);
     } else {
       Navigator.pushReplacementNamed(
         context,
         Routes.authPageKey,
-        arguments: AuthMode.signup,
+        arguments: {
+          'mode': AuthMode.signup,
+          'preferences': userPreferences,
+        },
       );
+    }
+  }
+
+  Future<void> fetchCalorieRecommendation() async {
+    isFetchingCalorieRecommendation = true;
+    aiError = null;
+    notifyListeners();
+    try {
+      final model =
+          FirebaseAI.googleAI().generativeModel(model: 'gemini-2.0-flash');
+      final prompt = [
+        Content.text(
+            '''Kullanıcıdan alınan verilere göre günlük alınması gereken kalori, protein, yağ ve karbonhidrat miktarını tahmin et. Sadece şu formatta cevap ver:\nkalori: [sayı]\nprotein: [sayı]\nyağ: [sayı]\nkarbonhidrat: [sayı]\nAçıklama veya başka bir şey ekleme.\n\nVeriler:\nBoy: ${height.round()} cm\nKilo: ${weight.round()} kg\nAktivite seviyesi: ${activityLevel.toString().split('.').last}\nHedefler: ${healthGoals.map((g) => g.toString().split('.').last).join(', ')}\n'''),
+      ];
+      final response = await model.generateContent(prompt);
+      final text = response.text ?? '';
+      final calorieMatch = RegExp(r'kalori:\s*(\d+)').firstMatch(text);
+      final proteinMatch = RegExp(r'protein:\s*(\d+)').firstMatch(text);
+      final fatMatch = RegExp(r'yağ:\s*(\d+)').firstMatch(text);
+      final carbMatch = RegExp(r'karbonhidrat:\s*(\d+)').firstMatch(text);
+      aiCalorieRecommendation =
+          calorieMatch != null ? int.tryParse(calorieMatch.group(1)!) : null;
+      aiProteinTarget =
+          proteinMatch != null ? int.tryParse(proteinMatch.group(1)!) : null;
+      aiFatTarget = fatMatch != null ? int.tryParse(fatMatch.group(1)!) : null;
+      aiCarbTarget =
+          carbMatch != null ? int.tryParse(carbMatch.group(1)!) : null;
+      if (aiCalorieRecommendation != null) {
+        setDailyCalorieTarget(aiCalorieRecommendation!);
+      }
+      if (aiCalorieRecommendation == null &&
+          aiProteinTarget == null &&
+          aiFatTarget == null &&
+          aiCarbTarget == null) {
+        aiError = 'AI yanıtı alınamadı.';
+      }
+    } catch (e) {
+      aiError = e.toString();
+    } finally {
+      isFetchingCalorieRecommendation = false;
+      notifyListeners();
     }
   }
 }

@@ -63,7 +63,9 @@ class AuthViewmodel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> submitForm(BuildContext context) async {
+  Future<void> submitForm(BuildContext context,
+      {required bool isFormValid}) async {
+    if (!isFormValid) return;
     if (mode == AuthMode.signup && !acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please accept the terms and conditions')),
@@ -196,6 +198,9 @@ class AuthViewmodel extends ChangeNotifier {
 
   Future<void> logout(BuildContext context) async {
     await _firebaseService.signOut();
+    // Remove onboarding_seen from cache
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('onboarding_seen');
     if (context.mounted) {
       Navigator.pushReplacementNamed(
         context,

@@ -188,7 +188,13 @@ class ProfileView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ProgressTrackerCard(user: user),
+                StreamBuilder(
+                  stream: context.read<ProfileViewmodel>().todayIntakeStream,
+                  builder: (context, snapshot) {
+                    final intake = snapshot.data;
+                    return ProgressTrackerCard(user: user, intake: intake);
+                  },
+                ),
                 const SizedBox(height: 20),
                 Card(
                   shape: RoundedRectangleBorder(
@@ -322,202 +328,188 @@ class ProfileView extends StatelessWidget {
 
 class ProgressTrackerCard extends StatelessWidget {
   final UserModel user;
-  const ProgressTrackerCard({super.key, required this.user});
+  final dynamic intake;
+  final int? proteinTarget;
+  final int? waterTarget;
+  const ProgressTrackerCard(
+      {super.key,
+      required this.user,
+      this.intake,
+      this.proteinTarget,
+      this.waterTarget});
 
   @override
   Widget build(BuildContext context) {
-    // Dummy data for demonstration
-    final double progress = 0.75;
-    final int calories = 1200;
-    final int calorieTarget = 1500;
-    final int protein = 65;
-    final int proteinTarget = 80;
-    final int water = 6;
-    final int waterTarget = 8;
+    final int calories = intake?.totalCalories?.round() ?? 0;
+    final int calorieTarget = user.dailyCalorieTarget.round();
+    final int protein = intake?.totalProtein?.round() ?? 0;
+    final int proteinTarget = this.proteinTarget ?? 80;
+    final int water = intake?.totalWater ?? 0;
+    final int waterTarget = this.waterTarget ?? 8;
     final int adherence = 85;
+    final double progress =
+        calorieTarget > 0 ? (calories / calorieTarget).clamp(0, 1) : 0.0;
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      children: [
+        Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 3,
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Current Goals',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Current Goals',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        SizedBox(
+                          width: 250,
+                          child: GridView.count(
+                            crossAxisCount: 2,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            mainAxisSpacing: 5,
+                            crossAxisSpacing: 5,
+                            childAspectRatio: 1.80,
+                            children: user.healthGoals.map((goal) {
+                              final iconPath = _getGoalIconPath(goal);
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.max,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    if (iconPath != null)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 12.0),
+                                        child: SvgPicture.asset(
+                                          iconPath,
+                                          width: 20,
+                                          height: 20,
+                                        ),
+                                      ),
+                                    Flexible(
+                                      child: Text(
+                                        _formatGoal(goal),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 12),
+                                        softWrap: true,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    SizedBox(
-                      width: 200,
-                      child: GridView.count(
-                        crossAxisCount: 1,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: 4,
-                        crossAxisSpacing: 2,
-                        childAspectRatio: 5,
-                        children: user.healthGoals.map((goal) {
-                          final iconPath = _getGoalIconPath(goal);
-                          return Chip(
-                            avatar: iconPath != null
-                                ? SvgPicture.asset(
-                                    iconPath,
-                                    width: 20,
-                                    height: 20,
-                                  )
-                                : null,
-                            label: Text(_formatGoal(goal)),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: CircularProgressIndicator(
+                            value: progress,
+                            strokeWidth: 6,
                             backgroundColor: Colors.grey[200],
-                            labelStyle:
-                                const TextStyle(fontWeight: FontWeight.w500),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF5B5FE9)),
+                          ),
+                        ),
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF5B5FE9),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 56,
-                      height: 56,
-                      child: CircularProgressIndicator(
-                        value: progress,
-                        strokeWidth: 6,
-                        backgroundColor: Colors.grey[200],
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Color(0xFF5B5FE9)),
-                      ),
-                    ),
-                    Text(
-                      '${(progress * 100).toInt()}%',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF5B5FE9),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 20),
+                _StatProgress(
+                  label: 'Calories',
+                  value: calories,
+                  target: calorieTarget,
                 ),
+                const SizedBox(height: 8),
+                _StatProgress(
+                  label: 'Protein',
+                  value: protein,
+                  target: proteinTarget,
+                ),
+                const SizedBox(height: 8),
+                _StatProgress(
+                  label: 'Carbs',
+                  value: intake?.totalCarbs?.round() ?? 0,
+                  target: 250, // TODO: AI'dan alınacak
+                ),
+                const SizedBox(height: 8),
+                _StatProgress(
+                  label: 'Fat',
+                  value: intake?.totalFat?.round() ?? 0,
+                  target: 70, // TODO: AI'dan alınacak
+                ),
+                const SizedBox(height: 8),
+                _StatProgress(
+                  label: 'Water',
+                  value: water,
+                  target: waterTarget,
+                  unit: 'cups',
+                ),
+                const SizedBox(height: 20),
               ],
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatProgress(
-                    label: 'Calories',
-                    value: calories,
-                    target: calorieTarget,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatProgress(
-                    label: 'Protein',
-                    value: protein,
-                    target: proteinTarget,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatProgress(
-                    label: 'Water',
-                    value: water,
-                    target: waterTarget,
-                    unit: 'cups',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatProgress(
-                    label: 'Adherence',
-                    value: adherence,
-                    target: 100,
-                    isPercent: true,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Log Meal'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.opacity),
-                    label: const Text('Add Water'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.mic),
-                    label: const Text('Voice In'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+        Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Water Intake',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                WaterCupsRow(water: water, waterTarget: waterTarget),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -587,6 +579,137 @@ class _StatProgress extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// Water Intake bardaklarını gösteren widget
+class WaterCupsRow extends StatefulWidget {
+  final int water;
+  final int waterTarget;
+  const WaterCupsRow({required this.water, required this.waterTarget, Key? key})
+      : super(key: key);
+
+  @override
+  State<WaterCupsRow> createState() => _WaterCupsRowState();
+}
+
+class _WaterCupsRowState extends State<WaterCupsRow> {
+  int? _removingIndex;
+  int? _selectedCupIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    int glassCount = widget.water == 0
+        ? widget.waterTarget
+        : (widget.water > widget.waterTarget
+                ? widget.water
+                : widget.waterTarget) +
+            1;
+    // Eğer bardak azaltılırsa ve bardak sayısı 8'den fazlaysa, boş bardak sayısını da azalt
+    if (widget.water < widget.waterTarget &&
+        glassCount > widget.waterTarget + 1) {
+      glassCount = widget.waterTarget + 1;
+    }
+    return Wrap(
+      spacing: 4,
+      runSpacing: 8,
+      children: List.generate(glassCount, (index) {
+        final isFilled = index < widget.water;
+        final isSelected = _selectedCupIndex == index;
+        final isRemoving = _removingIndex == index;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            GestureDetector(
+              onTap: () async {
+                if (!isFilled) {
+                  // Su ekle
+                  final now = DateTime.now();
+                  final date =
+                      "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+                  final firebaseService = context.read<FirebaseService>();
+                  final uid = firebaseService.currentUser?.uid;
+                  if (uid != null) {
+                    await firebaseService.addWaterToDailyIntake(
+                      userId: uid,
+                      date: date,
+                      amount: 1,
+                    );
+                  }
+                } else {
+                  // Dolu bardağa tıklayınca çarpı aç/kapa
+                  setState(() {
+                    if (_selectedCupIndex == index) {
+                      _selectedCupIndex = null;
+                    } else {
+                      _selectedCupIndex = index;
+                    }
+                  });
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                  child: Icon(
+                    Icons.local_drink,
+                    size: 32,
+                    color: isRemoving
+                        ? Colors.red
+                        : (isFilled ? Colors.blue : Colors.grey[300]),
+                  ),
+                ),
+              ),
+            ),
+            if (isSelected)
+              Positioned(
+                top: -8,
+                right: -8,
+                child: GestureDetector(
+                  onTap: () async {
+                    setState(() {
+                      _removingIndex = index;
+                      _selectedCupIndex = null;
+                    });
+                    await Future.delayed(const Duration(milliseconds: 400));
+                    setState(() {
+                      _removingIndex = null;
+                    });
+                    // Su azalt
+                    final now = DateTime.now();
+                    final date =
+                        "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+                    final firebaseService = context.read<FirebaseService>();
+                    final uid = firebaseService.currentUser?.uid;
+                    if (uid != null) {
+                      await firebaseService.addWaterToDailyIntake(
+                        userId: uid,
+                        date: date,
+                        amount: -1,
+                      );
+                    }
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: const Icon(Icons.close, size: 16, color: Colors.red),
+                  ),
+                ),
+              ),
+          ],
+        );
+      }),
     );
   }
 }

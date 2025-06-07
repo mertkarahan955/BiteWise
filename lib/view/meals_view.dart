@@ -242,17 +242,56 @@ class _MealCard extends StatelessWidget {
           Positioned(
             top: 12,
             right: 12,
-            child: Chip(
-              label: Text(
-                '${meal.calories.round()} kcal',
-                style: const TextStyle(
-                  color: Colors.deepOrange,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Chip(
+                  label: Text(
+                    '${meal.calories.round()} kcal',
+                    style: const TextStyle(
+                      color: Colors.deepOrange,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  backgroundColor: Colors.orange.shade50,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                 ),
-              ),
-              backgroundColor: Colors.orange.shade50,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                const SizedBox(width: 4),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () async {
+                      await context
+                          .read<MealsViewmodel>()
+                          .addMealToTodayIntake(meal);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Meal added to today!')),
+                        );
+                      }
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 2,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child:
+                          const Icon(Icons.add, size: 20, color: Colors.green),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

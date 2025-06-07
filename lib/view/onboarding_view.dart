@@ -130,6 +130,7 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
       // Second page - Dietary Restrictions
       OnboardingPage(
         title: "Let's Personalize Your Experience",
+        subtitle: "Select your dietary restrictions",
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -414,111 +415,151 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
             ),
           ),
           const SizedBox(height: 8),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: "${viewModel.dailyCalorieTarget}",
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const TextSpan(
-                  text: " kcal",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
+          if (viewModel.isFetchingCalorieRecommendation)
+            const CircularProgressIndicator(),
+          if (viewModel.aiError != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                viewModel.aiError!,
+                style: const TextStyle(color: Colors.red),
+              ),
             ),
-          ),
+          if (!viewModel.isFetchingCalorieRecommendation &&
+              viewModel.aiError == null)
+            RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: "${viewModel.dailyCalorieTarget}",
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const TextSpan(
+                    text: " kcal",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 8),
           const Text(
             "Based on your profile and goals",
             style: TextStyle(fontSize: 14),
           ),
           const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Adjust Daily Calorie Target'),
-                  content: StatefulBuilder(
-                    builder: (context, setState) {
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Slide to adjust your daily calorie target',
-                            style: TextStyle(fontSize: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: viewModel.isFetchingCalorieRecommendation
+                      ? null
+                      : () => viewModel.fetchCalorieRecommendation(),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 40),
+                    side: const BorderSide(color: Colors.black),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    "AI ile Hesapla",
+                    style: TextStyle(color: Colors.black),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Adjust Daily Calorie Target'),
+                        content: StatefulBuilder(
+                          builder: (context, setState) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Slide to adjust your daily calorie target',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                const SizedBox(height: 16),
+                                Slider(
+                                  value:
+                                      viewModel.dailyCalorieTarget.toDouble(),
+                                  min: 1200,
+                                  max: 4000,
+                                  divisions: 280,
+                                  label: "${viewModel.dailyCalorieTarget} kcal",
+                                  onChanged: (value) {
+                                    setState(() {
+                                      viewModel
+                                          .setDailyCalorieTarget(value.round());
+                                    });
+                                  },
+                                ),
+                                const Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("1200 kcal"),
+                                    Text("4000 kcal"),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Current target: \\${viewModel.dailyCalorieTarget} kcal",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
                           ),
-                          const SizedBox(height: 16),
-                          Slider(
-                            value: viewModel.dailyCalorieTarget.toDouble(),
-                            min: 1200,
-                            max: 4000,
-                            divisions: 280,
-                            label: "${viewModel.dailyCalorieTarget} kcal",
-                            onChanged: (value) {
-                              setState(() {
-                                viewModel.setDailyCalorieTarget(value.round());
-                              });
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
                             },
-                          ),
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text("1200 kcal"),
-                              Text("4000 kcal"),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Current target: ${viewModel.dailyCalorieTarget} kcal",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                            ),
+                            child: const Text(
+                              'Save',
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
                         ],
-                      );
-                    },
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 40),
+                    side: const BorderSide(color: Colors.black),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                      ),
-                      child: const Text(
-                        'Save',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
+                  child: const Text(
+                    "Manuel Ayarla",
+                    style: TextStyle(color: Colors.black),
+                  ),
                 ),
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 40),
-              side: const BorderSide(color: Colors.black),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-            child: const Text(
-              "Adjust Manually",
-              style: TextStyle(color: Colors.black),
-            ),
+            ],
           ),
         ],
       ),

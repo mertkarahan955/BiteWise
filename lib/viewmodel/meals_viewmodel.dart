@@ -82,4 +82,17 @@ class MealsViewmodel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> addMealToTodayIntake(Meal meal) async {
+    final user = _firebaseService.currentUser;
+    if (user == null) return;
+    final now = DateTime.now();
+    final date =
+        "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    await _firebaseService.addMealToDailyIntake(
+      userId: user.uid,
+      date: date,
+      meal: meal,
+    );
+  }
 }
