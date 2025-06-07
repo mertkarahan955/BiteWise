@@ -341,4 +341,15 @@ class FirebaseService {
         .doc(date)
         .snapshots();
   }
+
+  // Günlük intake'i doğrudan set et
+  Future<void> setDailyIntake(
+      String userId, String date, DailyIntake intake) async {
+    final docRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('daily_intake')
+        .doc(date);
+    await docRef.set(intake.toMap());
+  }
 }

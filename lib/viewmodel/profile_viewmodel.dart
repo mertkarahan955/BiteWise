@@ -14,17 +14,37 @@ class ProfileViewmodel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  String _getTodayString() {
+    final now = DateTime.now();
+    return "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+  }
+
   Stream<DailyIntake?> get todayIntakeStream {
     final user = _firebaseService.currentUser;
     if (user == null) {
       return Stream.value(null);
     }
-    final now = DateTime.now();
-    final date =
-        "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-    return _firebaseService
-        .dailyIntakeDocStream(user.uid, date)
-        .map((doc) => doc.exists ? DailyIntake.fromMap(doc.data()!) : null);
+    final today = _getTodayString();
+    final docStream = _firebaseService.dailyIntakeDocStream(user.uid, today);
+    return docStream.asyncMap((doc) async {
+      if (doc.exists) {
+        final intake = DailyIntake.fromMap(doc.data()!);
+        if (intake.date == today) {
+          return intake;
+        }
+      }
+      final newIntake = DailyIntake(
+        date: today,
+        mealIds: [],
+        totalCalories: 0,
+        totalProtein: 0,
+        totalCarbs: 0,
+        totalFat: 0,
+        totalWater: 0,
+      );
+      await _firebaseService.setDailyIntake(user.uid, today, newIntake);
+      return newIntake;
+    });
   }
 
   Future<void> loadUserProfile() async {
