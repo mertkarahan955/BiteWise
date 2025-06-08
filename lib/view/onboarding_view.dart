@@ -1,6 +1,7 @@
 import 'package:bitewise/models/allergens_model.dart';
 import 'package:bitewise/models/activity_level.dart';
 import 'package:bitewise/models/goal.dart';
+import 'package:bitewise/models/user_model.dart';
 import 'package:bitewise/view/auth_view.dart';
 import 'package:bitewise/utils/routes.dart';
 import 'package:bitewise/viewmodel/onboarding_viewmodel.dart';
@@ -278,6 +279,62 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Gender selection
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: DropdownButtonFormField<Gender>(
+                value: viewModel.gender,
+                decoration: InputDecoration(
+                  labelText: 'Gender',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                items: Gender.values.map((gender) {
+                  return DropdownMenuItem(
+                    value: gender,
+                    child: Text(gender.toString().split('.').last.capitalize()),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    viewModel.gender = value;
+                    viewModel.notifyListeners();
+                  }
+                },
+              ),
+            ),
+            // Age selection
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Row(
+                children: [
+                  const Text('Age:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Slider(
+                      value: viewModel.age.toDouble(),
+                      min: 10,
+                      max: 100,
+                      divisions: 90,
+                      label: viewModel.age.toString(),
+                      onChanged: (value) {
+                        viewModel.age = value.round();
+                        viewModel.notifyListeners();
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 40,
+                    child: Text(viewModel.age.toString(),
+                        textAlign: TextAlign.center),
+                  ),
+                ],
+              ),
+            ),
             _buildHeightSlider(viewModel),
             _buildWeightSlider(viewModel),
             _buildActivityLevel(viewModel),
@@ -832,4 +889,9 @@ class OnboardingPage extends StatelessWidget {
       ],
     );
   }
+}
+
+extension StringCasingExtension on String {
+  String capitalize() =>
+      this.isEmpty ? this : '${this[0].toUpperCase()}${substring(1)}';
 }

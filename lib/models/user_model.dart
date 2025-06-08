@@ -2,6 +2,8 @@ import 'package:bitewise/models/activity_level.dart';
 import 'package:bitewise/models/allergens_model.dart';
 import 'package:bitewise/models/goal.dart';
 
+enum Gender { male, female, other }
+
 class UserModel {
   final String? name;
   final String? email;
@@ -11,6 +13,8 @@ class UserModel {
   final List<CommonAllergens> dietaryRestrictions; // common allergens
   final List<Goal> healthGoals;
   final int dailyCalorieTarget;
+  final Gender gender;
+  final int age;
 
   UserModel({
     this.name,
@@ -21,6 +25,8 @@ class UserModel {
     required this.dietaryRestrictions,
     required this.healthGoals,
     required this.dailyCalorieTarget,
+    required this.gender,
+    required this.age,
   });
 
   Map<String, dynamic> toJson() {
@@ -35,6 +41,8 @@ class UserModel {
       'healthGoals':
           healthGoals.map((e) => e.toString().split('.').last).toList(),
       'dailyCalorieTarget': dailyCalorieTarget,
+      'gender': gender.toString().split('.').last,
+      'age': age,
     };
   }
 
@@ -45,24 +53,29 @@ class UserModel {
       height: (json['height'] as num?)?.toDouble() ?? 170.0,
       weight: (json['weight'] as num?)?.toDouble() ?? 70.0,
       activityLevel: ActivityLevel.values.firstWhere(
-        (e) => e.toString() == json['activityLevel'],
+        (e) => e.toString() == 'ActivityLevel.' + (json['activityLevel'] ?? ''),
         orElse: () => ActivityLevel.sedentary,
       ),
       dietaryRestrictions: (json['dietaryRestrictions'] as List?)
               ?.map((e) => CommonAllergens.values.firstWhere(
-                    (a) => a.toString() == e,
+                    (a) => a.toString() == 'CommonAllergens.' + e,
                     orElse: () => CommonAllergens.gluten,
                   ))
               .toList() ??
           [],
       healthGoals: (json['healthGoals'] as List?)
               ?.map((e) => Goal.values.firstWhere(
-                    (g) => g.toString() == e,
+                    (g) => g.toString() == 'Goal.' + e,
                     orElse: () => Goal.loseWeight,
                   ))
               .toList() ??
           [],
       dailyCalorieTarget: json['dailyCalorieTarget'] as int? ?? 2000,
+      gender: Gender.values.firstWhere(
+        (g) => g.toString() == 'Gender.' + (json['gender'] ?? 'male'),
+        orElse: () => Gender.male,
+      ),
+      age: json['age'] as int? ?? 25,
     );
   }
 }

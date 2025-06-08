@@ -23,17 +23,20 @@ class MealsViewmodel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _mealPlan = await _firebaseService.getFirstMealPlan();
-      if (_mealPlan != null) {
+      final planData =
+          await _firebaseService.getMealPlanForWeek(DateTime.now());
+      if (planData != null) {
+        _mealPlan = MealPlan.fromDoc(planData);
         // Collect all mealIds from the plan
         final mealIds = _mealPlan!.days
             .expand((d) => d.meals)
             .map((e) => e.mealId)
             .toSet()
             .toList();
-
         // Fetch all meals by IDs
         _meals = await _firebaseService.getMealsByIds(mealIds);
+      } else {
+        _mealPlan = null;
       }
     } catch (e) {
       _error = e.toString();

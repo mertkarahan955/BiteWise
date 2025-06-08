@@ -15,6 +15,8 @@ class OnboardingViewmodel extends ChangeNotifier {
   double weight = 70;
   ActivityLevel activityLevel = ActivityLevel.sedentary;
   int dailyCalorieTarget = 2000;
+  Gender gender = Gender.male;
+  int age = 25;
 
   // Search-related properties
   String _searchQuery = '';
@@ -39,6 +41,8 @@ class OnboardingViewmodel extends ChangeNotifier {
         dietaryRestrictions: dietaryRestrictions,
         healthGoals: healthGoals,
         dailyCalorieTarget: dailyCalorieTarget,
+        gender: gender,
+        age: age,
       );
 
   void addDietaryRestrictions(List<CommonAllergens> restrictions) {
@@ -132,7 +136,7 @@ class OnboardingViewmodel extends ChangeNotifier {
           FirebaseAI.googleAI().generativeModel(model: 'gemini-2.0-flash');
       final prompt = [
         Content.text(
-            '''Kullanıcıdan alınan verilere göre günlük alınması gereken kalori, protein, yağ ve karbonhidrat miktarını tahmin et. Sadece şu formatta cevap ver:\nkalori: [sayı]\nprotein: [sayı]\nyağ: [sayı]\nkarbonhidrat: [sayı]\nAçıklama veya başka bir şey ekleme.\n\nVeriler:\nBoy: ${height.round()} cm\nKilo: ${weight.round()} kg\nAktivite seviyesi: ${activityLevel.toString().split('.').last}\nHedefler: ${healthGoals.map((g) => g.toString().split('.').last).join(', ')}\n'''),
+            '''Kullanıcıdan alınan verilere göre günlük alınması gereken kalori, protein, yağ ve karbonhidrat miktarını tahmin et. Sadece şu formatta cevap ver:\nkalori: [sayı]\nprotein: [sayı]\nyağ: [sayı]\nkarbonhidrat: [sayı]\nAçıklama veya başka bir şey ekleme.\n\nVeriler:\nBoy: ${height.round()} cm\nKilo: ${weight.round()} kg\nYaş: $age\nCinsiyet: ${gender.toString().split('.').last}\nAktivite seviyesi: ${activityLevel.toString().split('.').last}\nHedefler: ${healthGoals.map((g) => g.toString().split('.').last).join(', ')}\n'''),
       ];
       final response = await model.generateContent(prompt);
       final text = response.text ?? '';

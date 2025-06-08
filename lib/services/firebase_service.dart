@@ -220,8 +220,11 @@ class FirebaseService {
   }
 
   Future<DocumentSnapshot?> getMealPlanForWeek(DateTime referenceDate) async {
-    final snapshot = await FirebaseFirestore.instance
+    final user = currentUser;
+    if (user == null) return null;
+    final snapshot = await _firestore
         .collection('mealPlans')
+        .where('userId', isEqualTo: user.uid)
         .where('startDate',
             isLessThanOrEqualTo: Timestamp.fromDate(referenceDate))
         .where('endDate',
@@ -230,10 +233,8 @@ class FirebaseService {
         .get();
 
     if (snapshot.docs.isNotEmpty) {
-      print(snapshot.docs.first.data());
       return snapshot.docs.first;
     }
-    print('No meal plan found for the week ${referenceDate.toString()}');
     return null;
   }
 
@@ -351,5 +352,64 @@ class FirebaseService {
         .collection('daily_intake')
         .doc(date);
     await docRef.set(intake.toMap());
+  }
+
+  /// Kullanıcıya özel mock meal planlar oluşturur
+  Future<void> addMockMealPlansForCurrentUser({int weekCount = 4}) async {
+    final user = currentUser;
+    if (user == null) throw Exception("No user logged in");
+    final meals = await getMeals();
+    if (meals.length < 3) throw Exception("En az 3 meal olmalı!");
+    final mealIds = meals.map((m) => m.id).toList();
+    final now = DateTime.now();
+    for (int i = 0; i < weekCount; i++) {
+      final startDate = now.add(Duration(days: i * 7));
+      final endDate = startDate.add(const Duration(days: 6));
+      final plan = _generateMockMealPlan(
+        userId: user.uid,
+        startDate: startDate,
+        endDate: endDate,
+        mealIds: mealIds,
+        name: "Sample Weekly Plan ${i + 1}",
+      );
+      await _firestore.collection('mealPlans').add(plan);
+    }
+  }
+
+  /// Yardımcı: Mock meal plan datası oluşturur
+  Map<String, dynamic> _generateMockMealPlan({
+    required String userId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required List<String> mealIds,
+    required String name,
+  }) {
+    final daysOfWeek = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    final days = List.generate(7, (i) {
+      return {
+        'dayOfWeek': daysOfWeek[i],
+        'meals': [
+          {'mealId': mealIds[i % mealIds.length], 'mealType': 'breakfast'},
+          {'mealId': mealIds[(i + 1) % mealIds.length], 'mealType': 'lunch'},
+          {'mealId': mealIds[(i + 2) % mealIds.length], 'mealType': 'dinner'},
+        ]
+      };
+    });
+    return {
+      'userId': userId,
+      'startDate': Timestamp.fromDate(startDate),
+      'endDate': Timestamp.fromDate(endDate),
+      'days': days,
+      'name': name,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
   }
 }

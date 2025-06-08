@@ -125,7 +125,9 @@ class ProfileView extends StatelessWidget {
                     const Center(child: CircularProgressIndicator()),
               );
               try {
-                await context.read<FirebaseService>().createBulkMealPlans();
+                await context
+                    .read<FirebaseService>()
+                    .addMockMealPlansForCurrentUser();
                 if (context.mounted) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(

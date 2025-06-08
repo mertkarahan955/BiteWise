@@ -2,7 +2,6 @@ import 'package:bitewise/models/user_model.dart';
 import 'package:bitewise/services/firebase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:bitewise/models/daily_intake.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfileViewmodel extends ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
