@@ -2,6 +2,8 @@ import 'package:bitewise/models/user_model.dart';
 import 'package:bitewise/services/firebase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:bitewise/models/daily_intake.dart';
+import 'package:bitewise/models/weight_entry.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfileViewmodel extends ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
@@ -9,9 +11,16 @@ class ProfileViewmodel extends ChangeNotifier {
   bool _isLoading = true;
   String? _error;
 
+  double? _currentWeight;
+  double? get currentWeight => _currentWeight;
+  double? get targetWeight => _user?.weight;
+
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  List<WeightEntry> _weightHistory = [];
+  List<WeightEntry> get weightHistory => _weightHistory;
 
   String _getTodayString() {
     final now = DateTime.now();
@@ -46,6 +55,42 @@ class ProfileViewmodel extends ChangeNotifier {
     });
   }
 
+  Future<void> loadTodayWeight() async {
+    final user = _firebaseService.currentUser;
+    if (user == null) return;
+    final today = _getTodayString();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('weight_history')
+        .doc(today)
+        .get();
+    if (doc.exists) {
+      _currentWeight =
+          (doc.data()?['weight'] ?? _user?.weight ?? 0.0).toDouble();
+    } else {
+      _currentWeight = _user?.weight;
+    }
+    notifyListeners();
+  }
+
+  Future<void> updateTodayWeight(double newWeight) async {
+    final now = DateTime.now();
+    await _firebaseService.addWeightEntry(newWeight, now);
+    _currentWeight = newWeight;
+    notifyListeners();
+  }
+
+  Future<void> loadWeightHistory() async {
+    try {
+      _weightHistory = await _firebaseService.getWeightHistory(days: 30);
+      notifyListeners();
+    } catch (e) {
+      // ignore error for now
+    }
+  }
+
+  @override
   Future<void> loadUserProfile() async {
     _isLoading = true;
     _error = null;
@@ -61,6 +106,8 @@ class ProfileViewmodel extends ChangeNotifier {
       final userData = await _firebaseService.getUserData(currentUser.uid);
       if (userData != null) {
         _user = UserModel.fromJson(userData);
+        await loadTodayWeight();
+        await loadWeightHistory();
       } else {
         _error = 'User data not found';
       }

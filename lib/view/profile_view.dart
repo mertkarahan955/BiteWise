@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:bitewise/services/firebase_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bitewise/models/user_model.dart';
+import 'package:bitewise/models/weight_entry.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class ProfileView extends StatelessWidget {
   const ProfileView({super.key});
@@ -190,6 +192,19 @@ class ProfileView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Weight Card
+                WeightCardPager(
+                  currentWeight: viewModel.currentWeight,
+                  targetWeight: viewModel.targetWeight,
+                  onWeightChanged: (newWeight) async {
+                    await viewModel.updateTodayWeight(newWeight);
+                    await viewModel.loadWeightHistory();
+                  },
+                  isLoading:
+                      viewModel.isLoading || viewModel.currentWeight == null,
+                  weightHistory: viewModel.weightHistory,
+                ),
+                const SizedBox(height: 20),
                 StreamBuilder(
                   stream: context.read<ProfileViewmodel>().todayIntakeStream,
                   builder: (context, snapshot) {
@@ -560,13 +575,16 @@ class _StatProgress extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
+              style: const TextStyle(fontSize: 14, color: Colors.black),
             ),
             Text(
               isPercent
                   ? '$value%'
                   : '$value/${target}${unit != null ? ' $unit' : ''}',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black),
             ),
           ],
         ),
@@ -712,6 +730,260 @@ class _WaterCupsRowState extends State<WaterCupsRow> {
           ],
         );
       }),
+    );
+  }
+}
+
+class WeightCardPager extends StatefulWidget {
+  final double? currentWeight;
+  final double? targetWeight;
+  final void Function(double) onWeightChanged;
+  final bool isLoading;
+  final List<WeightEntry> weightHistory;
+
+  const WeightCardPager({
+    required this.currentWeight,
+    required this.targetWeight,
+    required this.onWeightChanged,
+    required this.isLoading,
+    required this.weightHistory,
+    super.key,
+  });
+
+  @override
+  State<WeightCardPager> createState() => _WeightCardPagerState();
+}
+
+class _WeightCardPagerState extends State<WeightCardPager> {
+  int _page = 0;
+  final _controller = PageController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: PageView(
+            controller: _controller,
+            onPageChanged: (i) => setState(() => _page = i),
+            children: [
+              WeightCard(
+                currentWeight: widget.currentWeight,
+                targetWeight: widget.targetWeight,
+                onWeightChanged: widget.onWeightChanged,
+                isLoading: widget.isLoading,
+              ),
+              WeightHistoryChart(weightHistory: widget.weightHistory),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+              2,
+              (i) => Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _page == i
+                          ? const Color(0xFF5B5FE9)
+                          : Colors.grey[400],
+                    ),
+                  )),
+        ),
+      ],
+    );
+  }
+}
+
+class WeightHistoryChart extends StatelessWidget {
+  final List<WeightEntry> weightHistory;
+  const WeightHistoryChart({required this.weightHistory, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    if (weightHistory.isEmpty) {
+      return const Center(child: Text('No weight history'));
+    }
+    final spots = weightHistory
+        .asMap()
+        .entries
+        .map((e) => FlSpot(
+              e.key.toDouble(),
+              e.value.weight,
+            ))
+        .toList();
+
+    // X axis: day.month
+    List<String> xLabels = weightHistory.map((e) {
+      final date = DateTime.tryParse(e.date) ?? DateTime.now();
+      return "${date.day}.${date.month}";
+    }).toList();
+
+    // Y axis: min/max kilo, aralığı daha geniş ve yuvarlanmış tut
+    final weights = weightHistory.map((e) => e.weight).toList();
+    final minWeight = weights.reduce((a, b) => a < b ? a : b);
+    final maxWeight = weights.reduce((a, b) => a > b ? a : b);
+    final range = (maxWeight - minWeight).abs();
+    final padding = range < 2 ? 1 : (range * 0.2).clamp(1, 5);
+    final minY = (minWeight - padding).floorToDouble();
+    final maxY = (maxWeight + padding).ceilToDouble();
+    final yInterval = range < 5 ? 1 : 4;
+
+    return Card(
+      color: Colors.grey[200],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Kilo Geçmişi',
+                style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18)),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 120,
+              child: LineChart(
+                LineChartData(
+                  minY: minY,
+                  maxY: maxY,
+                  gridData: FlGridData(
+                    show: true,
+                    horizontalInterval: yInterval.toDouble(),
+                    getDrawingHorizontalLine: (_) =>
+                        FlLine(color: Colors.black12, strokeWidth: 1),
+                    drawVerticalLine: false,
+                  ),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 32,
+                        interval: yInterval.toDouble(),
+                        getTitlesWidget: (value, meta) => Text(
+                          value.toStringAsFixed(1),
+                          style: const TextStyle(
+                              color: Colors.black54, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 32,
+                        interval:
+                            (xLabels.length / 4).ceilToDouble().clamp(1, 7),
+                        getTitlesWidget: (value, meta) {
+                          int idx = value.round();
+                          if (idx < 0 || idx >= xLabels.length)
+                            return const SizedBox.shrink();
+                          return Text(
+                            xLabels[idx],
+                            style: const TextStyle(
+                                color: Colors.black54, fontSize: 12),
+                          );
+                        },
+                      ),
+                    ),
+                    rightTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      color: Color(0xFF5B5FE9),
+                      barWidth: 3,
+                      dotData: FlDotData(show: false),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class WeightCard extends StatelessWidget {
+  final double? currentWeight;
+  final double? targetWeight;
+  final void Function(double) onWeightChanged;
+  final bool isLoading;
+
+  const WeightCard({
+    required this.currentWeight,
+    required this.targetWeight,
+    required this.onWeightChanged,
+    this.isLoading = false,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.grey[200],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  const SizedBox(height: 8),
+                  const Text('Kilo',
+                      style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20)),
+                  Text('Hedef: ${targetWeight?.toStringAsFixed(1) ?? "-"} kg',
+                      style: const TextStyle(color: Colors.black54)),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: Colors.black, size: 40),
+                        onPressed: () {
+                          if (currentWeight != null) {
+                            onWeightChanged(
+                                (currentWeight! - 0.1).clamp(0, 999));
+                          }
+                        },
+                      ),
+                      Text('${currentWeight?.toStringAsFixed(1) ?? "-"} kg',
+                          style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline,
+                            color: Colors.black, size: 40),
+                        onPressed: () {
+                          if (currentWeight != null) {
+                            onWeightChanged(
+                                (currentWeight! + 0.1).clamp(0, 999));
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
