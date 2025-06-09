@@ -20,9 +20,19 @@ platform :ios do
   lane :beta do
    setup_ci if ENV["CI"]
    match(app_identifier: "com.example.bitewise", type: "appstore", readonly: true)
-   #updated_version_number = bump_build_number()
    increment_build_number(build_number: 2)
    build_app(workspace: "Runner.xcworkspace", scheme: "Runner")
+   gym(
+    export_method: "app-store",
+    export_options: {
+    provisioningProfiles: {
+      "com.mertkarahan.bitewise" => "match AppStore com.mertkarahan.bitewise"
+    },
+    signingStyle: "manual",
+    signingCertificate: "Apple Distribution"
+  },
+    allowProvisioningUpdates: true
+  )
    pilot(api_key_path: "fastlane/apikey.json", skip_waiting_for_build_processing: true)
   end
 
