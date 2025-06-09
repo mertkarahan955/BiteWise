@@ -12,6 +12,7 @@ jobs:
     runs-on: macos-latest
     env:
       ASC_JSON_KEY: ${{ secrets.ASC_JSON_KEY }}
+      FASTLANE_APPLE_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
 
     steps:
       - name: Checkout repository
