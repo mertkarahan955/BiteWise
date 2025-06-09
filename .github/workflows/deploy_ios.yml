@@ -10,6 +10,7 @@ on:
 jobs:
   ios_build:
     runs-on: macos-latest
+    environment: fastlane-deployment
     env:
       ASC_JSON_KEY: ${{ secrets.ASC_JSON_KEY }}
       FASTLANE_APPLE_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
