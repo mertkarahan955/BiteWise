@@ -26,6 +26,9 @@ jobs:
           cache: true
         id: flutter
       
+      - name: Get Packages
+        run: flutter pub get
+      
       - name: Setup Fastlane
         uses: ruby/setup-ruby@v1
         with:
@@ -35,7 +38,9 @@ jobs:
       
       - name: Setup AppStore Connect
         run: echo "$ASC_JSON_KEY" >> ./ios/fastlane/apikey.json
-
+      
+      - name: Install Pods
+        run: cd ios && pod install
       - name: Build and Deploy to TestFlight
         env: 
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
