@@ -1,0 +1,43 @@
+name: Deploy iOS to TestFlight
+
+on:
+  push:
+    tags:
+      - 'v*'       # Örn: v1.0.0 gibi versiyon tag'leriyle tetiklenir
+    branches:
+      - main       # veya sadece main'e push olduğunda çalışır
+
+jobs:
+  ios_build:
+    runs-on: macos-latest  # Zorunlu: iOS build için macOS gerekir
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build iOS IPA
+        run: flutter build ipa --release --no-codesign
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.4.4
+
+      - name: Install Fastlane
+        run: gem install fastlane
+
+      - name: Run Fastlane lane to upload to TestFlight
+        run: fastlane beta
+        working-directory: ios
+        env:
+          APPSTORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ID }}
+          APPSTORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_ISSUER_ID }}
+          APPSTORE_CONNECT_API_KEY: ${{ secrets.APPSTORE_CONNECT_API_KEY }}

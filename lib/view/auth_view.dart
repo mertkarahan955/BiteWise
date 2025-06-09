@@ -47,7 +47,7 @@ class _AuthViewState extends State<AuthView> {
                 // Email field
                 _buildTextField(
                   controller: viewmodel.emailController,
-                  label: 'Email',
+                  label: 'EmailBox',
                 ),
                 const SizedBox(height: 16),
 
@@ -55,7 +55,7 @@ class _AuthViewState extends State<AuthView> {
                 if (viewmodel.mode == AuthMode.signup) ...[
                   _buildTextField(
                     controller: viewmodel.phoneController,
-                    label: 'Phone Number',
+                    label: 'Phone Number Box',
                   ),
                   const SizedBox(height: 16),
                 ],
