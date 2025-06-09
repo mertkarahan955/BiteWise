@@ -34,7 +34,7 @@ jobs:
         env: 
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           ASC_JSON_KEY: ${{ secrets.ASC_JSON_KEY }}
-          MATCH_GIT_BASIC_AUTHARIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHARIZATION }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
         run: |
           cd ./ios 
           bundle exec fastlane ios beta
