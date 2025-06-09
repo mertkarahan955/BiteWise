@@ -50,3 +50,10 @@ app.*.map.json
 
 # API Keys
 .env
+ios/fastlane/AuthKey_*.p8
+ios/fastlane/apikey.json
+
+# build
+build/ios/*.ipa
+ios/*.dSYM.zip
+ios/*.ipa

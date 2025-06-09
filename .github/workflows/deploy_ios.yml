@@ -9,7 +9,7 @@ on:
 
 jobs:
   ios_build:
-    runs-on: macos-latest  # Zorunlu: iOS build için macOS gerekir
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository
@@ -19,25 +19,22 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.0'
-
-      - name: Install Flutter dependencies
-        run: flutter pub get
-
-      - name: Build iOS IPA
-        run: flutter build ipa --release --no-codesign
-
-      - name: Set up Ruby
+          channel: stable
+          cache: true
+        id: flutter
+      
+      - name: Setup Fastlane
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.4.4
+          ruby-version: "3.4.4"
+          bundler-cache: true
+          working-directory: ios
 
-      - name: Install Fastlane
-        run: gem install fastlane
-
-      - name: Run Fastlane lane to upload to TestFlight
-        run: fastlane beta
-        working-directory: ios
-        env:
-          APPSTORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ID }}
-          APPSTORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_ISSUER_ID }}
-          APPSTORE_CONNECT_API_KEY: ${{ secrets.APPSTORE_CONNECT_API_KEY }}
+      - name: Build and Deploy to TestFlight
+        env: 
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          ASC_JSON_KEY: ${{ secrets.ASC_JSON_KEY }}
+          MATCH_GIT_BASIC_AUTHARIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHARIZATION }}
+        run: |
+          cd ./ios 
+          bundle exec fastlane ios beta
