@@ -5,7 +5,6 @@ import 'package:bitewise/viewmodel/profile_viewmodel.dart';
 import 'package:bitewise/viewmodel/auth_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:bitewise/services/firebase_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bitewise/models/user_model.dart';
 import 'package:bitewise/models/weight_entry.dart';
@@ -52,107 +51,6 @@ class ProfileView extends StatelessWidget {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.upload),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Upload Mock Data'),
-                  content: const Text(
-                    'This will upload sample meals to the database. This action cannot be undone. Are you sure you want to continue?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        Navigator.of(context).pop();
-                        try {
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-
-                          await context.read<FirebaseService>().addMockMeals();
-
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text('Mock data uploaded successfully!'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error uploading mock data: $e'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                      ),
-                      child: const Text(
-                        'Upload',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            tooltip: 'Create Meal Plans',
-            onPressed: () async {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) =>
-                    const Center(child: CircularProgressIndicator()),
-              );
-              try {
-                await context
-                    .read<FirebaseService>()
-                    .addMockMealPlansForCurrentUser();
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Meal plans created successfully!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error creating meal plans: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-          const SizedBox(width: 16),
         ],
       ),
       body: Consumer<ProfileViewmodel>(
@@ -546,7 +444,7 @@ class ProgressTrackerCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildWaterCupsRow(water, waterTarget),
+                _buildWaterCupsRow(context, water, waterTarget),
               ],
             ),
           ),
@@ -574,16 +472,28 @@ class ProgressTrackerCard extends StatelessWidget {
         .replaceAll(RegExp(r'(?=[A-Z])'), ' ');
   }
 
-  Widget _buildWaterCupsRow(int water, int waterTarget) {
+  Widget _buildWaterCupsRow(BuildContext context, int water, int waterTarget) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: List.generate(waterTarget, (index) {
         final isFilled = index < water;
-        return Icon(
-          Icons.local_drink,
-          size: 32,
-          color: isFilled ? const Color(0xFF5B5FE9) : Colors.grey[300],
+        return GestureDetector(
+          onTap: () {
+            // Update water intake when a cup is tapped
+            if (index < water) {
+              // If tapping a filled cup, decrease water intake
+              context.read<ProfileViewmodel>().updateWaterIntake(water - 1);
+            } else {
+              // If tapping an empty cup, increase water intake
+              context.read<ProfileViewmodel>().updateWaterIntake(water + 1);
+            }
+          },
+          child: Icon(
+            Icons.local_drink,
+            size: 32,
+            color: isFilled ? const Color(0xFF5B5FE9) : Colors.grey[300],
+          ),
         );
       }),
     );

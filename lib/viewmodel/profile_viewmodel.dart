@@ -90,6 +90,36 @@ class ProfileViewmodel extends ChangeNotifier {
     }
   }
 
+  Future<void> updateWaterIntake(int newWaterIntake) async {
+    // Prevent negative water intake
+    if (newWaterIntake < 0) return;
+
+    final user = _firebaseService.currentUser;
+    if (user == null) return;
+
+    final today = _getTodayString();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('daily_intake')
+        .doc(today)
+        .get();
+
+    if (doc.exists) {
+      await doc.reference.update({'totalWater': newWaterIntake});
+    } else {
+      await doc.reference.set({
+        'date': today,
+        'totalWater': newWaterIntake,
+        'totalCalories': 0,
+        'totalProtein': 0,
+        'totalCarbs': 0,
+        'totalFat': 0,
+        'mealIds': [],
+      });
+    }
+  }
+
   @override
   Future<void> loadUserProfile() async {
     _isLoading = true;

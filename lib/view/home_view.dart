@@ -333,8 +333,12 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
                   }),
                 ),
                 const SizedBox(height: 8),
-                Text('${data.waterGoal - data.waterDrank} glasses to go!',
-                    style: const TextStyle(fontSize: 14)),
+                Text(
+                  data.waterDrank >= data.waterGoal
+                      ? 'Goal achieved! 🎉'
+                      : '${data.waterGoal - data.waterDrank} glasses to go!',
+                  style: const TextStyle(fontSize: 14),
+                ),
               ],
             ),
           ),

@@ -35,23 +35,15 @@ class AuthViewmodel extends ChangeNotifier {
 
   AuthViewmodel({required AuthMode initialMode}) : _mode = initialMode;
 
-  // Save form data before navigating to onboarding
-  void _saveFormData() {
-    _tempEmail = emailController.text;
-    _tempPassword = passwordController.text;
-    _tempName = nameController.text;
-    _tempPhone = phoneController.text;
-    _tempCountryCode = countryCodeController.text;
-  }
-
   // Restore form data after returning from onboarding
   void _restoreFormData() {
     if (_tempEmail != null) emailController.text = _tempEmail!;
     if (_tempPassword != null) passwordController.text = _tempPassword!;
     if (_tempName != null) nameController.text = _tempName!;
     if (_tempPhone != null) phoneController.text = _tempPhone!;
-    if (_tempCountryCode != null)
+    if (_tempCountryCode != null) {
       countryCodeController.text = _tempCountryCode!;
+    }
   }
 
   void toggleMode() {
