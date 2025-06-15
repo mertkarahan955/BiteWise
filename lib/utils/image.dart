@@ -61,6 +61,11 @@ class ImageConstants {
   static final String gainMuscleIcon = "gain_muscle";
   static final String maintainWellnessIcon = "heart";
   static final String betterNutritionIcon = "apple";
+  static final String recipeIcon = "recipe";
   // Onboarding
-  static final Map<int, String> onboarding = {1: 'onboarding_1', 2: 'onboarding_2', 3: 'onboarding_3'};
+  static final Map<int, String> onboarding = {
+    1: 'onboarding_1',
+    2: 'onboarding_2',
+    3: 'onboarding_3'
+  };
 }

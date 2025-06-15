@@ -52,6 +52,7 @@ app.*.map.json
 .env
 ios/fastlane/AuthKey_*.p8
 ios/fastlane/apikey.json
+android/key.properties
 
 # build
 build/ios/*.ipa

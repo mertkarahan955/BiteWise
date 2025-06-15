@@ -1,4 +1,4 @@
-app_identifier("com.example.bitewise") # The bundle identifier of your app
+app_identifier("com.mertkarahan.bitewise") # The bundle identifier of your app
 apple_id("mrtkarahan09@gmail.com") # Your Apple Developer Portal username
 
 itc_team_id("127897234") # App Store Connect Team ID

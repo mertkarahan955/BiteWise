@@ -14,12 +14,15 @@ class AuthViewmodel extends ChangeNotifier {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController countryCodeController =
+      TextEditingController(text: '+90');
 
   // Temporary storage for form data
   String? _tempEmail;
   String? _tempPassword;
   String? _tempName;
   String? _tempPhone;
+  String? _tempCountryCode;
 
   // State variables
   bool acceptTerms = false;
@@ -38,6 +41,7 @@ class AuthViewmodel extends ChangeNotifier {
     _tempPassword = passwordController.text;
     _tempName = nameController.text;
     _tempPhone = phoneController.text;
+    _tempCountryCode = countryCodeController.text;
   }
 
   // Restore form data after returning from onboarding
@@ -46,6 +50,8 @@ class AuthViewmodel extends ChangeNotifier {
     if (_tempPassword != null) passwordController.text = _tempPassword!;
     if (_tempName != null) nameController.text = _tempName!;
     if (_tempPhone != null) phoneController.text = _tempPhone!;
+    if (_tempCountryCode != null)
+      countryCodeController.text = _tempCountryCode!;
   }
 
   void toggleMode() {
@@ -63,14 +69,11 @@ class AuthViewmodel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> submitForm(BuildContext context,
+  Future<String?> submitForm(BuildContext context,
       {required bool isFormValid}) async {
-    if (!isFormValid) return;
+    if (!isFormValid) return null;
     if (mode == AuthMode.signup && !acceptTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please accept the terms and conditions')),
-      );
-      return;
+      return null;
     }
 
     _isLoading = true;
@@ -82,6 +85,7 @@ class AuthViewmodel extends ChangeNotifier {
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, Routes.homePageKey);
         }
+        return "success";
       } else {
         // Check if user has completed onboarding
         final prefs = await SharedPreferences.getInstance();
@@ -125,24 +129,28 @@ class AuthViewmodel extends ChangeNotifier {
               // If we got preferences back from onboarding
               if (result is UserModel) {
                 setOnboardingPreferences(result);
+                // After getting preferences, proceed with signup
+                await _signup();
+                if (context.mounted) {
+                  Navigator.pushReplacementNamed(context, Routes.homePageKey);
+                }
+                return "success";
               }
-              return;
+              return null;
             }
-            return;
+            return null;
           }
-        }
-
-        await _signup();
-        if (context.mounted) {
-          Navigator.pushReplacementNamed(context, Routes.homePageKey);
+        } else {
+          // If onboarding is already completed or preferences are set
+          await _signup();
+          if (context.mounted) {
+            Navigator.pushReplacementNamed(context, Routes.homePageKey);
+          }
+          return "success";
         }
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
-      }
+      return e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -223,6 +231,7 @@ class AuthViewmodel extends ChangeNotifier {
     passwordController.dispose();
     nameController.dispose();
     phoneController.dispose();
+    countryCodeController.dispose();
     super.dispose();
   }
 }

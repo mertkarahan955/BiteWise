@@ -90,40 +90,69 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
       // First page - Read only
       OnboardingPage(
         title: "Welcome to BiteWise!",
-        subtitle: "Let's help you get started with a personalized experience",
-        body: GridView(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2),
+        subtitle:
+            "Your personal nutrition and wellness companion. \nWhat is waiting you in the app?",
+        body: Column(
           children: [
-            _buildSectionTitle(
-              viewModel,
-              ImageConstants.restaurantGuideIcon,
-              "Restaurant Guide",
-              "Find safe dining options",
-              isPressable: false,
+            GridView(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1.2,
+              ),
+              children: [
+                _buildSectionTitle(
+                  viewModel,
+                  "restaurant",
+                  "Personalized Meals",
+                  "Find safe meals for your diet",
+                  isPressable: false,
+                  useMaterialIcon: true,
+                ),
+                _buildSectionTitle(
+                  viewModel,
+                  "preferences",
+                  "Dietary Preferences",
+                  "Set your restrictions",
+                  isPressable: false,
+                  useMaterialIcon: true,
+                ),
+                _buildSectionTitle(
+                  viewModel,
+                  "meal_plans",
+                  "Weekly Meal Plans",
+                  "Personalized nutrition",
+                  isPressable: false,
+                  useMaterialIcon: true,
+                ),
+                _buildSectionTitle(
+                  viewModel,
+                  "recipe",
+                  "Easy Recipes",
+                  "Step-by-step guides",
+                  isPressable: false,
+                  useMaterialIcon: true,
+                ),
+              ],
             ),
-            _buildSectionTitle(
-              viewModel,
-              ImageConstants.dietetaryPreferencesIcon,
-              "Dietary Preferences",
-              "Set your restrictions",
-              isPressable: false,
+            const SizedBox(height: 24),
+            const Text(
+              "Additional Benefits",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            _buildSectionTitle(
-              viewModel,
-              ImageConstants.alertRemindersIcon,
-              "Alerts & Reminders",
-              "Stay informed",
-              isPressable: false,
+            const SizedBox(height: 16),
+            _buildBenefitItem(
+              "📊 Visual Progress Tracking",
+              "Monitor your weight and calorie goals with interactive charts",
             ),
-            _buildSectionTitle(
-              viewModel,
-              ImageConstants.socialIcon,
-              "Social Features",
-              "Connect with others",
-              isPressable: false,
+            const SizedBox(height: 12),
+            _buildBenefitItem(
+              "📱 Cross-Platform Support",
+              "Seamless experience on both phone and tablet",
             ),
           ],
         ),
@@ -203,27 +232,91 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                labelStyle: const TextStyle(fontSize: 12),
-                prefixIconConstraints:
-                    const BoxConstraints(minWidth: 6, minHeight: 6),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: ImageTransformers(ImageConstants.searchicon).icon,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                labelText: 'Search other dietary restrictions',
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
               ),
-              onChanged: (value) => viewModel.searchAllergens(value),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search other dietary restrictions',
+                  hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Icon(Icons.search, color: Colors.grey[600]),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onChanged: (value) => viewModel.searchAllergens(value),
+              ),
             ),
-            if (viewModel.isSearching &&
-                viewModel.searchResults.isNotEmpty) ...[
+            if (viewModel.isSearching) ...[
               const SizedBox(height: 16),
+              viewModel.searchResults.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              color: Colors.grey[600], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'No restrictions found',
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: viewModel.searchResults.map((allergen) {
+                        final isSelected =
+                            viewModel.dietaryRestrictions.contains(allergen);
+                        return ChoiceChip(
+                          label: Text(
+                            _formatAllergenName(allergen),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color:
+                                  isSelected ? Colors.black : Colors.grey[600],
+                              fontWeight: isSelected
+                                  ? FontWeight.w500
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              viewModel.addDietaryRestrictions([allergen]);
+                            } else {
+                              viewModel.dietaryRestrictions.remove(allergen);
+                            }
+                            viewModel.notifyListeners();
+                          },
+                          backgroundColor: Colors.grey[50],
+                          selectedColor: Colors.grey[200],
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? Colors.grey[400]!
+                                  : Colors.grey[300]!,
+                              width: 1,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+            ],
+            if (viewModel.dietaryRestrictions.isNotEmpty) ...[
               const Text(
-                "Search Results",
+                "Selected Restrictions:",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -233,30 +326,41 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: viewModel.searchResults.map((allergen) {
-                  return ChoiceChip(
-                    label: Text(_formatAllergenName(allergen)),
-                    selected: viewModel.dietaryRestrictions.contains(allergen),
-                    onSelected: (selected) {
-                      if (selected) {
-                        viewModel.addDietaryRestrictions([allergen]);
-                      } else {
-                        viewModel.dietaryRestrictions.remove(allergen);
-                        viewModel.notifyListeners();
-                      }
-                    },
+                children: viewModel.dietaryRestrictions.map((allergen) {
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _formatAllergenName(allergen),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            viewModel.dietaryRestrictions.remove(allergen);
+                            viewModel.notifyListeners();
+                          },
+                          child: Icon(
+                            Icons.close,
+                            size: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }).toList(),
-              ),
-            ],
-            if (viewModel.isSearching && viewModel.searchResults.isEmpty) ...[
-              const SizedBox(height: 16),
-              const Text(
-                "No results found",
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
-                ),
               ),
             ],
             if (viewModel.dietaryRestrictions.isEmpty)
@@ -309,28 +413,61 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
             // Age selection
             Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Age:',
                       style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Slider(
-                      value: viewModel.age.toDouble(),
-                      min: 10,
-                      max: 100,
-                      divisions: 90,
-                      label: viewModel.age.toString(),
-                      onChanged: (value) {
-                        viewModel.age = value.round();
-                        viewModel.notifyListeners();
-                      },
-                    ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          if (viewModel.age > 10) {
+                            viewModel.age = viewModel.age - 1;
+                            viewModel.notifyListeners();
+                          }
+                        },
+                        icon: const Icon(Icons.remove_circle_outline),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: viewModel.age.toDouble(),
+                          min: 10,
+                          max: 100,
+                          divisions: 90,
+                          label: viewModel.age.toString(),
+                          onChanged: (value) {
+                            viewModel.age = value.round();
+                            viewModel.notifyListeners();
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          if (viewModel.age < 100) {
+                            viewModel.age = viewModel.age + 1;
+                            viewModel.notifyListeners();
+                          }
+                        },
+                        icon: const Icon(Icons.add_circle_outline),
+                      ),
+                      SizedBox(
+                        width: 40,
+                        child: Text(
+                          viewModel.age.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(
-                    width: 40,
-                    child: Text(viewModel.age.toString(),
-                        textAlign: TextAlign.center),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("10"),
+                      Text("100"),
+                    ],
                   ),
                 ],
               ),
@@ -371,13 +508,43 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
       children: [
         const Text("Height", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Slider(
-          value: viewModel.height,
-          min: 140,
-          max: 200,
-          divisions: 60,
-          label: "${viewModel.height.round()}cm",
-          onChanged: (value) => viewModel.setHeight(value),
+        Row(
+          children: [
+            IconButton(
+              onPressed: () {
+                if (viewModel.height > 140) {
+                  viewModel.setHeight(viewModel.height - 1);
+                }
+              },
+              icon: const Icon(Icons.remove_circle_outline),
+            ),
+            Expanded(
+              child: Slider(
+                value: viewModel.height,
+                min: 140,
+                max: 200,
+                divisions: 60,
+                label: "${viewModel.height.round()}cm",
+                onChanged: (value) => viewModel.setHeight(value),
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                if (viewModel.height < 200) {
+                  viewModel.setHeight(viewModel.height + 1);
+                }
+              },
+              icon: const Icon(Icons.add_circle_outline),
+            ),
+            SizedBox(
+              width: 50,
+              child: Text(
+                "${viewModel.height.round()}cm",
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
         ),
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -396,13 +563,43 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
       children: [
         const Text("Weight", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Slider(
-          value: viewModel.weight,
-          min: 40,
-          max: 120,
-          divisions: 80,
-          label: "${viewModel.weight.round()}kg",
-          onChanged: (value) => viewModel.setWeight(value),
+        Row(
+          children: [
+            IconButton(
+              onPressed: () {
+                if (viewModel.weight > 40) {
+                  viewModel.setWeight(viewModel.weight - 1);
+                }
+              },
+              icon: const Icon(Icons.remove_circle_outline),
+            ),
+            Expanded(
+              child: Slider(
+                value: viewModel.weight,
+                min: 40,
+                max: 120,
+                divisions: 80,
+                label: "${viewModel.weight.round()}kg",
+                onChanged: (value) => viewModel.setWeight(value),
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                if (viewModel.weight < 120) {
+                  viewModel.setWeight(viewModel.weight + 1);
+                }
+              },
+              icon: const Icon(Icons.add_circle_outline),
+            ),
+            SizedBox(
+              width: 50,
+              child: Text(
+                "${viewModel.weight.round()}kg",
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
         ),
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -526,7 +723,7 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
                     ),
                   ),
                   child: const Text(
-                    "AI ile Hesapla",
+                    "Calculate with AI",
                     style: TextStyle(color: Colors.black),
                   ),
                 ),
@@ -611,7 +808,7 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
                     ),
                   ),
                   child: const Text(
-                    "Manuel Ayarla",
+                    "Setup Manuel",
                     style: TextStyle(color: Colors.black),
                   ),
                 ),
@@ -694,7 +891,11 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.only(
+            left: 24.0,
+            right: 24.0,
+            bottom: 24.0 + MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -758,15 +959,16 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
     String? body, {
     bool isPressable = false,
     bool isSelected = false,
+    bool useMaterialIcon = false,
   }) {
     final content = Card(
-      color: isSelected ? Colors.black : Colors.transparent,
+      color: isSelected ? const Color(0xFFF5F5F5) : Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isSelected ? Colors.blue : Colors.grey,
-          width: isSelected ? 2 : 1,
+          color: isSelected ? Colors.black : Colors.grey.shade300,
+          width: isSelected ? 1.5 : 1,
         ),
       ),
       child: Padding(
@@ -775,13 +977,20 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ImageTransformers(icon).icon,
+            if (useMaterialIcon)
+              Icon(
+                _getMaterialIcon(header),
+                size: 24,
+                color: isSelected ? Colors.black : Colors.black87,
+              )
+            else
+              ImageTransformers(icon).icon,
             const SizedBox(height: 2),
             Text(
               header,
               style: TextStyle(
                 fontWeight: body == "" ? FontWeight.normal : FontWeight.bold,
-                color: isSelected ? Colors.blue : Colors.black,
+                color: isSelected ? Colors.black : Colors.black87,
               ),
               textAlign: TextAlign.center,
             ),
@@ -791,7 +1000,7 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
                 : Text(
                     body,
                     style: TextStyle(
-                      color: isSelected ? Colors.blue : Colors.grey,
+                      color: isSelected ? Colors.black54 : Colors.grey,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -851,6 +1060,70 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
             child: content,
           )
         : content;
+  }
+
+  Widget _buildBenefitItem(String title, String description) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getMaterialIcon(String header) {
+    switch (header) {
+      case "Easy Recipes":
+        return Icons.menu_book;
+      case "Weekly Meal Plans":
+        return Icons.calendar_today;
+      case "Personalized Meals":
+        return Icons.restaurant;
+      case "Dietary Preferences":
+        return Icons.restaurant_menu;
+      default:
+        return Icons.help;
+    }
+  }
+
+  bool _isMainAllergen(CommonAllergens allergen) {
+    final mainAllergens = [
+      CommonAllergens.gluten,
+      CommonAllergens.lactose,
+      CommonAllergens.soy,
+      CommonAllergens.shellfish,
+      CommonAllergens.eggs,
+      CommonAllergens.nuts,
+    ];
+    return mainAllergens.contains(allergen);
   }
 }
 

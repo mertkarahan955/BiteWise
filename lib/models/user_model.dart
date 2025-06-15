@@ -57,10 +57,16 @@ class UserModel {
         orElse: () => ActivityLevel.sedentary,
       ),
       dietaryRestrictions: (json['dietaryRestrictions'] as List?)
-              ?.map((e) => CommonAllergens.values.firstWhere(
-                    (a) => a.toString() == 'CommonAllergens.' + e,
-                    orElse: () => CommonAllergens.gluten,
-                  ))
+              ?.map((e) {
+                try {
+                  return CommonAllergens.values.firstWhere(
+                    (a) => a.toString() == e.toString(),
+                  );
+                } catch (_) {
+                  return null;
+                }
+              })
+              .whereType<CommonAllergens>()
               .toList() ??
           [],
       healthGoals: (json['healthGoals'] as List?)

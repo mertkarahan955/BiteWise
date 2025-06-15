@@ -23,6 +23,44 @@
           "other_platform_oauth_client": []
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:450450590920:android:a613bbed0bd67cad6ea9fd",
+        "android_client_info": {
+          "package_name": "com.example.bitewiseapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAN9OWMI916dUeVeQUgwY9ZgDXAiTTwfNE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:450450590920:android:b408f9a611d2877d6ea9fd",
+        "android_client_info": {
+          "package_name": "com.mertkarahan.bitewise"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAN9OWMI916dUeVeQUgwY9ZgDXAiTTwfNE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"

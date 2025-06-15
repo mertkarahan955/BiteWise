@@ -64,6 +64,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '450450590920',
     projectId: 'bitewise-28ad4',
     storageBucket: 'bitewise-28ad4.firebasestorage.app',
-    iosBundleId: 'com.example.bitewise',
+    iosBundleId: 'com.mertkarahan.bitewise',
   );
 }

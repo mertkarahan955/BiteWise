@@ -1,9 +1,11 @@
-import 'package:bitewise/assets/meal_images.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:bitewise/viewmodel/meals_viewmodel.dart';
 import 'package:bitewise/models/meal_model.dart';
+import 'package:bitewise/view/meal_details_view.dart';
+import 'package:bitewise/view/components/meal_card.dart';
+import 'package:bitewise/view/components/popup_notification.dart';
 
 class MealsView extends StatefulWidget {
   const MealsView({super.key});
@@ -14,11 +16,11 @@ class MealsView extends StatefulWidget {
 
 class _MealsViewState extends State<MealsView> {
   String selectedWeek = 'This Week';
-  MealType? selectedMealType;
 
   @override
   void initState() {
     super.initState();
+    // Load initial meal plan
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MealsViewmodel>().loadMealPlanByWeek(selectedWeek);
     });
@@ -32,6 +34,7 @@ class _MealsViewState extends State<MealsView> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
@@ -74,37 +77,9 @@ class _MealsViewState extends State<MealsView> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text('Add Meal',
-                          style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                          side: const BorderSide(color: Colors.blue, width: 2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Spacer(),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'My Meal\nPlan',
-                          textAlign: TextAlign.start,
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 24),
-                        ),
-                      ],
-                    ),
-                  ],
+                Text(
+                  'My Meal Plan',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
                 ),
               ],
             ),
@@ -118,6 +93,8 @@ class _MealsViewState extends State<MealsView> {
 }
 
 class MealPlans extends StatelessWidget {
+  const MealPlans({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Consumer<MealsViewmodel>(
@@ -125,13 +102,58 @@ class MealPlans extends StatelessWidget {
         if (viewModel.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
+
         if (viewModel.error != null) {
-          return Center(child: Text(viewModel.error!));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Error: ${viewModel.error}',
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    viewModel.loadMealPlanByWeek('This Week');
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
         }
+
         final mealPlan = viewModel.mealPlan;
         if (mealPlan == null) {
-          return const Center(child: Text('No meal plan found'));
+          // Show popup notification
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final overlay = Overlay.of(context);
+            late final OverlayEntry overlayEntry;
+            overlayEntry = OverlayEntry(
+              builder: (context) => PopupNotification(
+                message: 'Your personalized meal plan is being generated...',
+                type: PopupNotificationType.info,
+                duration: const Duration(seconds: 3),
+                onClose: () {
+                  overlayEntry.remove();
+                  // Start generating meal plan
+                  viewModel.loadMealPlanByWeek('This Week');
+                },
+              ),
+            );
+            overlay.insert(overlayEntry);
+          });
+
+          return const Center(
+            child: Text(
+              'Generating your meal plan...',
+              style: TextStyle(fontSize: 18),
+            ),
+          );
         }
+
         return ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -152,25 +174,31 @@ class MealPlans extends StatelessWidget {
                   ),
                 ],
               ),
-              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    day.dayOfWeek,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 18),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      day.dayOfWeek,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 12),
                   Expanded(
                     child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       children: day.meals.map((entry) {
                         final meal = viewModel.getMealById(entry.mealId);
                         if (meal == null) return const SizedBox.shrink();
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12.0),
-                          child:
-                              _MealCard(meal: meal, mealType: entry.mealType),
+                          child: MealCard(
+                            meal: meal,
+                            mealType: entry.mealType,
+                          ),
                         );
                       }).toList(),
                     ),
@@ -181,121 +209,6 @@ class MealPlans extends StatelessWidget {
           },
         );
       },
-    );
-  }
-}
-
-class _MealCard extends StatelessWidget {
-  final Meal meal;
-  final String mealType;
-
-  const _MealCard({required this.meal, required this.mealType});
-
-  String getMealTypeLabel(String type) {
-    switch (type) {
-      case 'breakfast':
-        return 'Breakfast';
-      case 'lunch':
-        return 'Lunch';
-      case 'dinner':
-        return 'Dinner';
-      default:
-        return 'Meal';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final assetPath = mealSvgAssets[meal.id];
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Stack(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            height: 180,
-            child: assetPath != null
-                ? SvgPicture.asset(assetPath, fit: BoxFit.cover)
-                : (meal.imageUrl.isNotEmpty
-                    ? Image.network(meal.imageUrl, fit: BoxFit.cover)
-                    : Container(
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.restaurant,
-                            size: 48, color: Colors.grey),
-                      )),
-          ),
-          Positioned(
-            top: 12,
-            left: 12,
-            child: Chip(
-              label: Text(
-                getMealTypeLabel(mealType),
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              backgroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            ),
-          ),
-          Positioned(
-            top: 12,
-            right: 12,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Chip(
-                  label: Text(
-                    '${meal.calories.round()} kcal',
-                    style: const TextStyle(
-                      color: Colors.deepOrange,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  backgroundColor: Colors.orange.shade50,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                ),
-                const SizedBox(width: 4),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () async {
-                      await context
-                          .read<MealsViewmodel>()
-                          .addMealToTodayIntake(meal);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Meal added to today!')),
-                        );
-                      }
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 2,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(4),
-                      child:
-                          const Icon(Icons.add, size: 20, color: Colors.green),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

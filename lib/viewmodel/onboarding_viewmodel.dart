@@ -113,6 +113,7 @@ class OnboardingViewmodel extends ChangeNotifier {
   Future<void> finalizeOnboarding(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_seen', true);
+
     if (Navigator.canPop(context)) {
       Navigator.pop(context, userPreferences);
     } else {
@@ -136,14 +137,28 @@ class OnboardingViewmodel extends ChangeNotifier {
           FirebaseAI.googleAI().generativeModel(model: 'gemini-2.0-flash');
       final prompt = [
         Content.text(
-            '''Kullanıcıdan alınan verilere göre günlük alınması gereken kalori, protein, yağ ve karbonhidrat miktarını tahmin et. Sadece şu formatta cevap ver:\nkalori: [sayı]\nprotein: [sayı]\nyağ: [sayı]\nkarbonhidrat: [sayı]\nAçıklama veya başka bir şey ekleme.\n\nVeriler:\nBoy: ${height.round()} cm\nKilo: ${weight.round()} kg\nYaş: $age\nCinsiyet: ${gender.toString().split('.').last}\nAktivite seviyesi: ${activityLevel.toString().split('.').last}\nHedefler: ${healthGoals.map((g) => g.toString().split('.').last).join(', ')}\n'''),
+            '''Based on the user's data, estimate the daily required calories, protein, fat, and carbohydrate. Only answer in this format:
+calories: [number]
+protein: [number]
+fat: [number]
+carbohydrate: [number]
+Do not add any explanation or anything else.
+
+Data:
+Height: ${height.round()} cm
+Weight: ${weight.round()} kg
+Age: $age
+Gender: ${gender.toString().split('.').last}
+Activity level: ${activityLevel.toString().split('.').last}
+Goals: ${healthGoals.map((g) => g.toString().split('.').last).join(', ')}
+'''),
       ];
       final response = await model.generateContent(prompt);
       final text = response.text ?? '';
-      final calorieMatch = RegExp(r'kalori:\s*(\d+)').firstMatch(text);
+      final calorieMatch = RegExp(r'calories:\s*(\d+)').firstMatch(text);
       final proteinMatch = RegExp(r'protein:\s*(\d+)').firstMatch(text);
-      final fatMatch = RegExp(r'yağ:\s*(\d+)').firstMatch(text);
-      final carbMatch = RegExp(r'karbonhidrat:\s*(\d+)').firstMatch(text);
+      final fatMatch = RegExp(r'fat:\s*(\d+)').firstMatch(text);
+      final carbMatch = RegExp(r'carbohydrate:\s*(\d+)').firstMatch(text);
       aiCalorieRecommendation =
           calorieMatch != null ? int.tryParse(calorieMatch.group(1)!) : null;
       aiProteinTarget =
@@ -158,7 +173,7 @@ class OnboardingViewmodel extends ChangeNotifier {
           aiProteinTarget == null &&
           aiFatTarget == null &&
           aiCarbTarget == null) {
-        aiError = 'AI yanıtı alınamadı.';
+        aiError = 'AI response could not be received.';
       }
     } catch (e) {
       aiError = e.toString();

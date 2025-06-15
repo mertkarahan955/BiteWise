@@ -285,6 +285,7 @@ class ProfileView extends StatelessWidget {
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
         ),
         const SizedBox(height: 16),
@@ -311,6 +312,7 @@ class ProfileView extends StatelessWidget {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
+              color: Colors.black,
             ),
           ),
         ],
@@ -355,6 +357,44 @@ class ProgressTrackerCard extends StatelessWidget {
       this.proteinTarget,
       this.waterTarget});
 
+  Widget _buildStatProgress(String label, int value, int target,
+      {String? unit}) {
+    double percent = value / target;
+    if (percent > 1) percent = 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14, color: Colors.black),
+            ),
+            Text(
+              unit != null ? '$value/$target $unit' : '$value/$target',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF5B5FE9),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: percent,
+            minHeight: 8,
+            backgroundColor: Colors.grey[200],
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF5B5FE9)),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final int calories = intake?.totalCalories?.round() ?? 0;
@@ -390,6 +430,7 @@ class ProgressTrackerCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: Colors.black,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -453,7 +494,7 @@ class ProgressTrackerCard extends StatelessWidget {
                             value: progress,
                             strokeWidth: 6,
                             backgroundColor: Colors.grey[200],
-                            valueColor: AlwaysStoppedAnimation<Color>(
+                            valueColor: const AlwaysStoppedAnimation<Color>(
                                 Color(0xFF5B5FE9)),
                           ),
                         ),
@@ -470,36 +511,16 @@ class ProgressTrackerCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _StatProgress(
-                  label: 'Calories',
-                  value: calories,
-                  target: calorieTarget,
-                ),
+                _buildStatProgress('Calories', calories, calorieTarget),
                 const SizedBox(height: 8),
-                _StatProgress(
-                  label: 'Protein',
-                  value: protein,
-                  target: proteinTarget,
-                ),
+                _buildStatProgress('Protein', protein, proteinTarget),
                 const SizedBox(height: 8),
-                _StatProgress(
-                  label: 'Carbs',
-                  value: intake?.totalCarbs?.round() ?? 0,
-                  target: 250, // TODO: AI'dan alınacak
-                ),
+                _buildStatProgress(
+                    'Carbs', intake?.totalCarbs?.round() ?? 0, 250),
                 const SizedBox(height: 8),
-                _StatProgress(
-                  label: 'Fat',
-                  value: intake?.totalFat?.round() ?? 0,
-                  target: 70, // TODO: AI'dan alınacak
-                ),
+                _buildStatProgress('Fat', intake?.totalFat?.round() ?? 0, 70),
                 const SizedBox(height: 8),
-                _StatProgress(
-                  label: 'Water',
-                  value: water,
-                  target: waterTarget,
-                  unit: 'cups',
-                ),
+                _buildStatProgress('Water', water, waterTarget, unit: 'cups'),
                 const SizedBox(height: 20),
               ],
             ),
@@ -518,10 +539,14 @@ class ProgressTrackerCard extends StatelessWidget {
               children: [
                 const Text(
                   'Water Intake',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                WaterCupsRow(water: water, waterTarget: waterTarget),
+                _buildWaterCupsRow(water, waterTarget),
               ],
             ),
           ),
@@ -548,186 +573,17 @@ class ProgressTrackerCard extends StatelessWidget {
         .last
         .replaceAll(RegExp(r'(?=[A-Z])'), ' ');
   }
-}
 
-class _StatProgress extends StatelessWidget {
-  final String label;
-  final int value;
-  final int target;
-  final String? unit;
-  final bool isPercent;
-  const _StatProgress(
-      {required this.label,
-      required this.value,
-      required this.target,
-      this.unit,
-      this.isPercent = false});
-
-  @override
-  Widget build(BuildContext context) {
-    double percent = value / target;
-    if (percent > 1) percent = 1;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 14, color: Colors.black),
-            ),
-            Text(
-              isPercent
-                  ? '$value%'
-                  : '$value/${target}${unit != null ? ' $unit' : ''}',
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: percent,
-            minHeight: 8,
-            backgroundColor: Colors.grey[200],
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5B5FE9)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// Water Intake bardaklarını gösteren widget
-class WaterCupsRow extends StatefulWidget {
-  final int water;
-  final int waterTarget;
-  const WaterCupsRow({required this.water, required this.waterTarget, Key? key})
-      : super(key: key);
-
-  @override
-  State<WaterCupsRow> createState() => _WaterCupsRowState();
-}
-
-class _WaterCupsRowState extends State<WaterCupsRow> {
-  int? _removingIndex;
-  int? _selectedCupIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    int glassCount = widget.water == 0
-        ? widget.waterTarget
-        : (widget.water > widget.waterTarget
-                ? widget.water
-                : widget.waterTarget) +
-            1;
-    // Eğer bardak azaltılırsa ve bardak sayısı 8'den fazlaysa, boş bardak sayısını da azalt
-    if (widget.water < widget.waterTarget &&
-        glassCount > widget.waterTarget + 1) {
-      glassCount = widget.waterTarget + 1;
-    }
+  Widget _buildWaterCupsRow(int water, int waterTarget) {
     return Wrap(
-      spacing: 4,
+      spacing: 8,
       runSpacing: 8,
-      children: List.generate(glassCount, (index) {
-        final isFilled = index < widget.water;
-        final isSelected = _selectedCupIndex == index;
-        final isRemoving = _removingIndex == index;
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            GestureDetector(
-              onTap: () async {
-                if (!isFilled) {
-                  // Su ekle
-                  final now = DateTime.now();
-                  final date =
-                      "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-                  final firebaseService = context.read<FirebaseService>();
-                  final uid = firebaseService.currentUser?.uid;
-                  if (uid != null) {
-                    await firebaseService.addWaterToDailyIntake(
-                      userId: uid,
-                      date: date,
-                      amount: 1,
-                    );
-                  }
-                } else {
-                  // Dolu bardağa tıklayınca çarpı aç/kapa
-                  setState(() {
-                    if (_selectedCupIndex == index) {
-                      _selectedCupIndex = null;
-                    } else {
-                      _selectedCupIndex = index;
-                    }
-                  });
-                }
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOut,
-                  child: Icon(
-                    Icons.local_drink,
-                    size: 32,
-                    color: isRemoving
-                        ? Colors.red
-                        : (isFilled ? Colors.blue : Colors.grey[300]),
-                  ),
-                ),
-              ),
-            ),
-            if (isSelected)
-              Positioned(
-                top: -8,
-                right: -8,
-                child: GestureDetector(
-                  onTap: () async {
-                    setState(() {
-                      _removingIndex = index;
-                      _selectedCupIndex = null;
-                    });
-                    await Future.delayed(const Duration(milliseconds: 400));
-                    setState(() {
-                      _removingIndex = null;
-                    });
-                    // Su azalt
-                    final now = DateTime.now();
-                    final date =
-                        "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-                    final firebaseService = context.read<FirebaseService>();
-                    final uid = firebaseService.currentUser?.uid;
-                    if (uid != null) {
-                      await firebaseService.addWaterToDailyIntake(
-                        userId: uid,
-                        date: date,
-                        amount: -1,
-                      );
-                    }
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 2,
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(2),
-                    child: const Icon(Icons.close, size: 16, color: Colors.red),
-                  ),
-                ),
-              ),
-          ],
+      children: List.generate(waterTarget, (index) {
+        final isFilled = index < water;
+        return Icon(
+          Icons.local_drink,
+          size: 32,
+          color: isFilled ? const Color(0xFF5B5FE9) : Colors.grey[300],
         );
       }),
     );
@@ -842,7 +698,7 @@ class WeightHistoryChart extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Kilo Geçmişi',
+            const Text('Weight History',
                 style: TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
@@ -943,12 +799,12 @@ class WeightCard extends StatelessWidget {
             : Column(
                 children: [
                   const SizedBox(height: 8),
-                  const Text('Kilo',
+                  const Text('Weight',
                       style: TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.bold,
                           fontSize: 20)),
-                  Text('Hedef: ${targetWeight?.toStringAsFixed(1) ?? "-"} kg',
+                  Text('Target: ${targetWeight?.toStringAsFixed(1) ?? "-"} kg',
                       style: const TextStyle(color: Colors.black54)),
                   const SizedBox(height: 8),
                   Row(
@@ -964,11 +820,72 @@ class WeightCard extends StatelessWidget {
                           }
                         },
                       ),
-                      Text('${currentWeight?.toStringAsFixed(1) ?? "-"} kg',
-                          style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold)),
+                      GestureDetector(
+                        onTap: () {
+                          if (currentWeight != null) {
+                            final controller = TextEditingController(
+                              text: currentWeight!.toStringAsFixed(1),
+                            );
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Enter Weight'),
+                                content: TextField(
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
+                                  autofocus: true,
+                                  decoration: const InputDecoration(
+                                    suffixText: 'kg',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  controller: controller,
+                                  onSubmitted: (value) {
+                                    final newWeight = double.tryParse(value);
+                                    if (newWeight != null &&
+                                        newWeight > 0 &&
+                                        newWeight < 999) {
+                                      onWeightChanged(newWeight);
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      final value = controller.text;
+                                      final newWeight = double.tryParse(value);
+                                      if (newWeight != null &&
+                                          newWeight > 0 &&
+                                          newWeight < 999) {
+                                        onWeightChanged(newWeight);
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.black,
+                                    ),
+                                    child: const Text(
+                                      'Save',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                        child: Text(
+                            '${currentWeight?.toStringAsFixed(1) ?? "-"} kg',
+                            style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 40,
+                                fontWeight: FontWeight.bold)),
+                      ),
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline,
                             color: Colors.black, size: 40),

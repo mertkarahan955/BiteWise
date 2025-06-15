@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.bitewise</string>
+	<string>com.mertkarahan.bitewise</string>
 	<key>PROJECT_ID</key>
 	<string>bitewise-28ad4</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:450450590920:ios:71707e58a8a7308f6ea9fd</string>
+	<string>1:450450590920:ios:dbac95c67b324eb46ea9fd</string>
 </dict>
 </plist>

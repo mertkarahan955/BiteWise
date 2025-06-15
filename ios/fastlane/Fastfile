@@ -19,20 +19,9 @@ platform :ios do
   desc "Push a new beta build to TestFlight"
   lane :beta do
    setup_ci if ENV["CI"]
-   match(app_identifier: "com.example.bitewise", type: "appstore", readonly: true)
-   increment_build_number(build_number: 2)
+   match(app_identifier: "com.mertkarahan.bitewise", type: "appstore", readonly: true)
+   increment_build_number(build_number: 5)
    build_app(workspace: "Runner.xcworkspace", scheme: "Runner")
-   gym(
-    export_method: "app-store",
-    export_options: {
-    provisioningProfiles: {
-      "com.mertkarahan.bitewise" => "match AppStore com.mertkarahan.bitewise"
-    },
-    signingStyle: "manual",
-    signingCertificate: "Apple Distribution"
-  },
-    allowProvisioningUpdates: true
-  )
    pilot(api_key_path: "fastlane/apikey.json", skip_waiting_for_build_processing: true)
   end
 

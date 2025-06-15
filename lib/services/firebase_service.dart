@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:bitewise/data/mock_meals.dart';
 import 'package:bitewise/models/meal_model.dart';
-import 'package:bitewise/models/meal_plan_model.dart';
 import 'package:bitewise/models/daily_intake.dart';
 import 'package:bitewise/models/weight_entry.dart';
 
@@ -170,14 +169,6 @@ class FirebaseService {
     }
   }
 
-  Future<MealPlan?> getFirstMealPlan() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('mealPlans').limit(1).get();
-
-    if (snapshot.docs.isEmpty) return null;
-    return MealPlan.fromDoc(snapshot.docs.first);
-  }
-
   Future<List<Meal>> getMealsByIds(List<String> ids) async {
     if (ids.isEmpty) return [];
     final snapshot = await FirebaseFirestore.instance
@@ -189,57 +180,7 @@ class FirebaseService {
         .toList();
   }
 
-  Future<void> createBulkMealPlans() async {
-    final firestore = FirebaseFirestore.instance;
-    final DateTime today = DateTime.now();
-    for (int i = 0; i < 4; i++) {
-      final DateTime weekStart = today.add(Duration(days: i * 7));
-      final mealPlanData = {
-        'startDate': Timestamp.fromDate(weekStart),
-        'days': [
-          {
-            'dayOfWeek': 'Monday',
-            'meals': [
-              {'mealId': 'meal1', 'mealType': 'breakfast'},
-              {'mealId': 'meal2', 'mealType': 'lunch'},
-              {'mealId': 'meal3', 'mealType': 'dinner'},
-            ]
-          },
-          {
-            'dayOfWeek': 'Tuesday',
-            'meals': [
-              {'mealId': 'meal4', 'mealType': 'breakfast'},
-              {'mealId': 'meal5', 'mealType': 'lunch'},
-              {'mealId': 'meal6', 'mealType': 'dinner'},
-            ]
-          },
-          // ... add more days as needed ...
-        ],
-      };
-      await firestore.collection('mealPlansMock').add(mealPlanData);
-    }
-  }
-
-  Future<DocumentSnapshot?> getMealPlanForWeek(DateTime referenceDate) async {
-    final user = currentUser;
-    if (user == null) return null;
-    final snapshot = await _firestore
-        .collection('mealPlans')
-        .where('userId', isEqualTo: user.uid)
-        .where('startDate',
-            isLessThanOrEqualTo: Timestamp.fromDate(referenceDate))
-        .where('endDate',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(referenceDate))
-        .limit(1)
-        .get();
-
-    if (snapshot.docs.isNotEmpty) {
-      return snapshot.docs.first;
-    }
-    return null;
-  }
-
-  // Günlük intake'i getir
+  // Get daily intake
   Future<DailyIntake?> getDailyIntake(String userId, String date) async {
     final doc = await _firestore
         .collection('users')
@@ -253,7 +194,7 @@ class FirebaseService {
     return null;
   }
 
-  // Günlük intake'e meal ekle
+  // Add meal to daily intake
   Future<void> addMealToDailyIntake({
     required String userId,
     required String date,
@@ -268,7 +209,7 @@ class FirebaseService {
     if (doc.exists) {
       final data = doc.data()!;
       final intake = DailyIntake.fromMap(data);
-      // Eğer meal zaten ekli ise tekrar ekleme
+      // If meal already exists, do not add again
       if (intake.mealIds.contains(meal.id)) return;
       final updated = DailyIntake(
         date: date,
@@ -294,7 +235,7 @@ class FirebaseService {
     }
   }
 
-  // Günlük intake'e su ekle
+  // Add water to daily intake
   Future<void> addWaterToDailyIntake({
     required String userId,
     required String date,
@@ -333,7 +274,7 @@ class FirebaseService {
     }
   }
 
-  // Günlük intake dokümanını stream olarak getir
+  // Get daily intake document as stream
   Stream<DocumentSnapshot<Map<String, dynamic>>> dailyIntakeDocStream(
       String userId, String date) {
     return _firestore
@@ -344,7 +285,7 @@ class FirebaseService {
         .snapshots();
   }
 
-  // Günlük intake'i doğrudan set et
+  // Set daily intake directly
   Future<void> setDailyIntake(
       String userId, String date, DailyIntake intake) async {
     final docRef = _firestore
@@ -355,12 +296,12 @@ class FirebaseService {
     await docRef.set(intake.toMap());
   }
 
-  /// Kullanıcıya özel mock meal planlar oluşturur
+  /// Creates mock meal plans for the user
   Future<void> addMockMealPlansForCurrentUser({int weekCount = 4}) async {
     final user = currentUser;
     if (user == null) throw Exception("No user logged in");
     final meals = await getMeals();
-    if (meals.length < 3) throw Exception("En az 3 meal olmalı!");
+    if (meals.length < 3) throw Exception("At least 3 meals required!");
     final mealIds = meals.map((m) => m.id).toList();
     final now = DateTime.now();
     for (int i = 0; i < weekCount; i++) {
@@ -371,13 +312,13 @@ class FirebaseService {
         startDate: startDate,
         endDate: endDate,
         mealIds: mealIds,
-        name: "Sample Weekly Plan ${i + 1}",
+        name: "Sample Weekly Plan ${i + 1}",
       );
       await _firestore.collection('mealPlans').add(plan);
     }
   }
 
-  /// Yardımcı: Mock meal plan datası oluşturur
+  /// Helper: Generates mock meal plan data
   Map<String, dynamic> _generateMockMealPlan({
     required String userId,
     required DateTime startDate,
@@ -414,7 +355,7 @@ class FirebaseService {
     };
   }
 
-  /// Kullanıcı için günlük kilo kaydı ekle
+  /// Add daily weight entry for user
   Future<void> addWeightEntry(double weight, DateTime date) async {
     final user = currentUser;
     if (user == null) throw Exception("No user logged in");
@@ -434,7 +375,7 @@ class FirebaseService {
         .update({'weight': roundedWeight});
   }
 
-  /// Son X günün kilo geçmişini getir (varsayılan 30 gün)
+  /// Get last X days of weight history (default 30 days)
   Future<List<WeightEntry>> getWeightHistory({int days = 30}) async {
     final user = currentUser;
     if (user == null) throw Exception("No user logged in");
