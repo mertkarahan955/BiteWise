@@ -48,6 +48,34 @@ class UserModel {
     };
   }
 
+  UserModel copyWith({
+    double? height,
+    double? weight,
+    double? targetWeight,
+    ActivityLevel? activityLevel,
+    List<CommonAllergens>? dietaryRestrictions,
+    List<Goal>? healthGoals,
+    int? dailyCalorieTarget,
+    Gender? gender,
+    int? age,
+    String? name,
+    String? email,
+  }) {
+    return UserModel(
+      height: height ?? this.height,
+      weight: weight ?? this.weight,
+      targetWeight: targetWeight ?? this.targetWeight,
+      activityLevel: activityLevel ?? this.activityLevel,
+      dietaryRestrictions: dietaryRestrictions ?? this.dietaryRestrictions,
+      healthGoals: healthGoals ?? this.healthGoals,
+      dailyCalorieTarget: dailyCalorieTarget ?? this.dailyCalorieTarget,
+      gender: gender ?? this.gender,
+      age: age ?? this.age,
+      name: name ?? this.name,
+      email: email ?? this.email,
+    );
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       height: json['height']?.toDouble() ?? 0.0,

@@ -103,8 +103,16 @@ class ProfileViewmodel extends ChangeNotifier {
         'date': dateStr,
       });
 
-      await loadUserData();
+      // Update local state
+      _currentWeight = weight;
+
+      // Update weight history
       await loadWeightHistory();
+
+      // Update user data without triggering a full reload
+      if (_userData != null) {
+        _userData = _userData!.copyWith(weight: weight);
+      }
     } catch (e) {
       _error = e.toString();
     } finally {

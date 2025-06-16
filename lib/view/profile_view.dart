@@ -57,10 +57,6 @@ class ProfileView extends StatelessWidget {
       ),
       body: Consumer<ProfileViewmodel>(
         builder: (context, viewModel, child) {
-          if (viewModel.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
           if (viewModel.error != null) {
             return Center(
               child: Column(
@@ -152,15 +148,17 @@ class ProfileView extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 // Weight Card
-                WeightCardPager(
-                  currentWeight: viewModel.currentWeight,
-                  onWeightChanged: (newWeight) async {
-                    await viewModel.updateTodayWeight(newWeight);
-                    await viewModel.loadWeightHistory();
+                Consumer<ProfileViewmodel>(
+                  builder: (context, viewModel, child) {
+                    return WeightCardPager(
+                      currentWeight: viewModel.currentWeight,
+                      onWeightChanged: (newWeight) async {
+                        await viewModel.updateTodayWeight(newWeight);
+                      },
+                      isLoading: viewModel.isLoading,
+                      weightHistory: viewModel.weightHistory,
+                    );
                   },
-                  isLoading:
-                      viewModel.isLoading || viewModel.currentWeight == null,
-                  weightHistory: viewModel.weightHistory,
                 ),
                 const SizedBox(height: 20),
                 StreamBuilder(
@@ -694,12 +692,13 @@ class _WeightCardPagerState extends State<WeightCardPager> {
     return Column(
       children: [
         SizedBox(
-          height: 200, // Increased height to accommodate both weight fields
+          height: 200,
           child: PageView(
             controller: _controller,
             onPageChanged: (i) => setState(() => _page = i),
             children: [
               WeightCard(
+                key: ValueKey(widget.currentWeight),
                 currentWeight: widget.currentWeight,
                 onWeightChanged: widget.onWeightChanged,
                 isLoading: widget.isLoading,
@@ -920,6 +919,7 @@ class _WeightCardState extends State<WeightCard> {
           child: widget.isLoading
               ? const Center(child: CircularProgressIndicator())
               : Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
