@@ -1,47 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:bitewise/models/meal_model.dart';
 import 'package:bitewise/models/meal_plan_model.dart';
-import 'package:bitewise/services/firebase_service.dart';
+import 'package:bitewise/services/interfaces/i_meal_service.dart';
+import 'package:bitewise/services/interfaces/i_nutrition_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MealsViewmodel extends ChangeNotifier {
-  final FirebaseService _firebaseService = FirebaseService();
+  final IMealService _mealService;
+  final INutritionService _nutritionService;
 
   List<Meal> _meals = [];
   MealPlan? _mealPlan;
   bool _isLoading = false;
   String? _error;
   String _currentWeek = 'This Week';
+  bool _isInitialized = false;
+
+  MealsViewmodel({
+    required IMealService mealService,
+    required INutritionService nutritionService,
+  })  : _mealService = mealService,
+        _nutritionService = nutritionService;
 
   List<Meal> get meals => _meals;
   MealPlan? get mealPlan => _mealPlan;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get currentWeek => _currentWeek;
+  bool get isInitialized => _isInitialized;
 
-  Future<void> loadMealsAndPlan() async {
+  Future<void> loadMeals() async {
+    if (_isLoading) return;
+
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final planData = await _getMealPlanForWeek(DateTime.now());
-      if (planData != null) {
-        _mealPlan = planData;
-        // Collect all mealIds from the plan
-        final mealIds = _mealPlan!.days
-            .expand((d) => d.meals)
-            .map((e) => e.mealId)
-            .toSet()
-            .toList();
-        // Fetch all meals by IDs
-        _meals = await _firebaseService.getMealsByIds(mealIds);
-      } else {
-        _mealPlan = null;
-      }
+      _meals = await _mealService.getMeals();
+      _isInitialized = true;
     } catch (e) {
       _error = e.toString();
+      debugPrint('Error loading meals: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMealPlans() async {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _mealPlan = await _mealService.getMealPlanForWeek(DateTime.now());
+      _isInitialized = true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Error loading meal plans: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> addMockMeals() async {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _mealService.addMockMeals();
+      await loadMeals();
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Error adding mock meals: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> addMockMealPlans() async {
+    if (_isLoading) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _mealService.addMockMealPlansForCurrentUser();
+      await loadMealPlans();
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Error adding mock meal plans: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -65,7 +120,10 @@ class MealsViewmodel extends ChangeNotifier {
 
   Future<void> loadMealPlanByWeek(String week) async {
     // If we're already loading or if we're loading the same week's data, don't fetch again
-    if (_isLoading || (_mealPlan != null && week == _currentWeek)) return;
+    if (_isLoading || (_mealPlan != null && week == _currentWeek)) {
+      print('Skipping meal plan load - Already loading or same week');
+      return;
+    }
 
     try {
       _isLoading = true;
@@ -81,16 +139,20 @@ class MealsViewmodel extends ChangeNotifier {
           'Loading meal plan for week: $week (reference date: $referenceDate)');
 
       // Get meal plan for the selected week
-      _mealPlan = await _getMealPlanForWeek(referenceDate);
+      final mealPlan = await _mealService.getMealPlanForWeek(referenceDate);
+      print(
+          'Meal plan fetch result: ${mealPlan != null ? 'Found' : 'Not found'}');
 
       // If no meal plan exists, generate a new one
-      if (_mealPlan == null) {
+      if (mealPlan == null) {
         print('No meal plan found, generating new one...');
-        await _firebaseService.addMockMealPlansForCurrentUser(weekCount: 1);
-        _mealPlan = await _getMealPlanForWeek(referenceDate);
-        print('New meal plan generated successfully');
+        await _mealService.addMockMealPlansForCurrentUser(weekCount: 1);
+        _mealPlan = await _mealService.getMealPlanForWeek(referenceDate);
+        print(
+            'New meal plan generated: ${_mealPlan != null ? 'Success' : 'Failed'}');
       } else {
-        print('Existing meal plan found');
+        print('Existing meal plan found, setting to state');
+        _mealPlan = mealPlan;
       }
 
       // Load all meals referenced in the meal plan
@@ -101,7 +163,7 @@ class MealsViewmodel extends ChangeNotifier {
             .toList();
 
         print('Loading ${mealIds.length} meals from plan...');
-        _meals = await _firebaseService.getMealsByIds(mealIds);
+        _meals = await _mealService.getMealsByIds(mealIds);
         print('Successfully loaded ${_meals.length} meals');
 
         // Check if any meals are missing
@@ -112,8 +174,11 @@ class MealsViewmodel extends ChangeNotifier {
           print(
               'Warning: ${missingMeals.length} meals could not be loaded. Missing IDs: $missingMeals');
         }
+      } else {
+        print('Warning: No meal plan available after loading/generation');
       }
 
+      _isInitialized = true;
       _isLoading = false;
       notifyListeners();
     } catch (e, stackTrace) {
@@ -125,26 +190,9 @@ class MealsViewmodel extends ChangeNotifier {
     }
   }
 
-  Future<MealPlan?> _getMealPlanForWeek(DateTime referenceDate) async {
-    final currentUser = _firebaseService.currentUser;
-    if (currentUser == null) return null;
-
-    final snapshot = await FirebaseFirestore.instance
-        .collection('mealPlans')
-        .where('userId', isEqualTo: currentUser.uid)
-        .where('createdAt',
-            isLessThanOrEqualTo: Timestamp.fromDate(referenceDate))
-        .orderBy('createdAt', descending: true)
-        .limit(1)
-        .get();
-
-    if (snapshot.docs.isEmpty) return null;
-    return MealPlan.fromDoc(snapshot.docs.first);
-  }
-
   Future<void> addMealToTodayIntake(Meal meal) async {
     try {
-      final user = _firebaseService.currentUser;
+      final user = _mealService.currentUser;
       if (user == null) throw Exception('No user logged in');
 
       final today = DateTime.now();
@@ -152,7 +200,7 @@ class MealsViewmodel extends ChangeNotifier {
           '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
       print('Adding meal ${meal.id} to daily intake for date: $dateStr');
-      await _firebaseService.addMealToDailyIntake(
+      await _nutritionService.addMealToDailyIntake(
         userId: user.uid,
         date: dateStr,
         meal: meal,

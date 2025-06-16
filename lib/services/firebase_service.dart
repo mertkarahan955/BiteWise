@@ -6,15 +6,16 @@ import 'package:bitewise/data/mock_meals.dart';
 import 'package:bitewise/models/meal_model.dart';
 import 'package:bitewise/models/daily_intake.dart';
 import 'package:bitewise/models/weight_entry.dart';
+import 'package:bitewise/services/interfaces/i_firebase_service.dart';
 
-class FirebaseService {
+class FirebaseService implements IFirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Get current user
+  @override
   User? get currentUser => _auth.currentUser;
 
-  // Sign up with email and password
+  @override
   Future<UserCredential> signUp({
     required String email,
     required String password,
@@ -56,7 +57,7 @@ class FirebaseService {
     }
   }
 
-  // Sign in with email and password
+  @override
   Future<UserCredential> signIn({
     required String email,
     required String password,
@@ -78,12 +79,12 @@ class FirebaseService {
     }
   }
 
-  // Sign out
+  @override
   Future<void> signOut() async {
     await _auth.signOut();
   }
 
-  // Check if user is logged in
+  @override
   bool isUserLoggedIn() {
     return _auth.currentUser != null;
   }

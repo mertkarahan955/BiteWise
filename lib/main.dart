@@ -2,8 +2,11 @@ import 'package:bitewise/firebase_options.dart';
 import 'package:bitewise/services/firebase_service.dart';
 import 'package:bitewise/utils/locator.dart';
 import 'package:bitewise/utils/routes.dart';
-import 'package:bitewise/view/auth_view.dart';
 import 'package:bitewise/viewmodel/auth_viewmodel.dart';
+import 'package:bitewise/viewmodel/profile_viewmodel.dart';
+import 'package:bitewise/viewmodel/meals_viewmodel.dart';
+import 'package:bitewise/viewmodel/home_viewmodel.dart';
+import 'package:bitewise/viewmodel/splash_viewmodel.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -30,9 +33,11 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AuthViewmodel(initialMode: AuthMode.login),
-        ),
+        ChangeNotifierProvider(create: (_) => locator<AuthViewmodel>()),
+        ChangeNotifierProvider(create: (_) => locator<ProfileViewmodel>()),
+        ChangeNotifierProvider(create: (_) => locator<MealsViewmodel>()),
+        ChangeNotifierProvider(create: (_) => locator<HomeViewmodel>()),
+        ChangeNotifierProvider(create: (_) => locator<SplashViewmodel>()),
         Provider<FirebaseService>(
           create: (_) => locator<FirebaseService>(),
         ),

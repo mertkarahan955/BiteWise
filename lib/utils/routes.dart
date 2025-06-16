@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:bitewise/viewmodel/profile_viewmodel.dart';
 import 'package:bitewise/view/profile_view.dart';
 import 'package:bitewise/view/layout/main_layout.dart';
+import 'package:bitewise/utils/locator.dart';
 
 class Routes {
   static const String splashPageKey = '/';
@@ -24,7 +25,7 @@ class Routes {
         return _buildRoute(
           settings,
           ChangeNotifierProvider(
-            create: (context) => SplashViewmodel(),
+            create: (context) => locator<SplashViewmodel>(),
             child: const SplashView(),
           ),
         );
@@ -38,38 +39,43 @@ class Routes {
         );
       case authPageKey:
         final args = settings.arguments;
-        AuthMode initialMode;
+        debugPrint('Auth page route arguments: $args');
+
+        AuthMode mode;
         UserModel? preferences;
 
-        if (args is Map<String, dynamic>) {
-          initialMode = args['mode'] as AuthMode? ?? AuthMode.login;
+        if (args is AuthMode) {
+          mode = args;
+        } else if (args is Map<String, dynamic>) {
+          mode = args['mode'] as AuthMode;
           preferences = args['preferences'] as UserModel?;
         } else {
-          initialMode = args as AuthMode? ?? AuthMode.login;
+          mode = AuthMode.login;
+        }
+
+        debugPrint('Auth mode: $mode');
+        if (preferences != null) {
+          debugPrint('Preferences: ${preferences.toString()}');
         }
 
         return _buildRoute(
           settings,
           ChangeNotifierProvider(
             create: (context) {
-              final viewModel = AuthViewmodel(initialMode: initialMode);
+              final viewModel = locator<AuthViewmodel>();
               if (preferences != null) {
                 viewModel.setOnboardingPreferences(preferences);
               }
               return viewModel;
             },
-            child: const AuthView(),
+            child: AuthView(initialMode: mode),
           ),
         );
       case profilePageKey:
         return _buildRoute(
           settings,
-          MultiProvider(
-            providers: [
-              ChangeNotifierProvider(
-                create: (context) => ProfileViewmodel()..loadUserProfile(),
-              ),
-            ],
+          ChangeNotifierProvider(
+            create: (context) => locator<ProfileViewmodel>(),
             child: const ProfileView(),
           ),
         );

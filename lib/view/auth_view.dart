@@ -9,7 +9,12 @@ import 'components/popup_notification.dart';
 enum AuthMode { login, signup }
 
 class AuthView extends StatefulWidget {
-  const AuthView({super.key});
+  final AuthMode initialMode;
+
+  const AuthView({
+    super.key,
+    this.initialMode = AuthMode.login,
+  });
 
   @override
   State<AuthView> createState() => _AuthViewState();
@@ -17,6 +22,18 @@ class AuthView extends StatefulWidget {
 
 class _AuthViewState extends State<AuthView> {
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Set initial mode from widget parameter
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewmodel = Provider.of<AuthViewmodel>(context, listen: false);
+      if (viewmodel.mode != widget.initialMode) {
+        viewmodel.toggleMode();
+      }
+    });
+  }
 
   // Helper to show popup notification
   void showPopup(String message, PopupNotificationType type) {
@@ -232,7 +249,7 @@ class _AuthViewState extends State<AuthView> {
                           text: viewmodel.mode == AuthMode.login
                               ? "Sign Up"
                               : "Log In",
-                          style: TextStyle(
+                          style: const TextStyle(
                               color: ColorUtil.primaryColor,
                               fontWeight: FontWeight.bold),
                         ),

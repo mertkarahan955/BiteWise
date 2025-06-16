@@ -85,6 +85,12 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   List<OnboardingPage> _buildPages(OnboardingViewmodel viewModel) {
     return [
       // First page - Read only
@@ -363,17 +369,6 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
                 }).toList(),
               ),
             ],
-            if (viewModel.dietaryRestrictions.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 16.0),
-                child: Text(
-                  "Please select at least one dietary restriction",
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -561,7 +556,8 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Weight", style: TextStyle(fontWeight: FontWeight.bold)),
+        const Text("Current Weight",
+            style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -608,44 +604,83 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
             Text("120kg"),
           ],
         ),
+        const SizedBox(height: 24),
+        const Text("Target Weight",
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            IconButton(
+              onPressed: () {
+                if (viewModel.targetWeight > 40) {
+                  viewModel.setTargetWeight(viewModel.targetWeight - 1);
+                }
+              },
+              icon: const Icon(Icons.remove_circle_outline),
+            ),
+            Expanded(
+              child: Slider(
+                value: viewModel.targetWeight,
+                min: 40,
+                max: 120,
+                divisions: 80,
+                label: "${viewModel.targetWeight.round()}kg",
+                onChanged: (value) => viewModel.setTargetWeight(value),
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                if (viewModel.targetWeight < 120) {
+                  viewModel.setTargetWeight(viewModel.targetWeight + 1);
+                }
+              },
+              icon: const Icon(Icons.add_circle_outline),
+            ),
+            SizedBox(
+              width: 50,
+              child: Text(
+                "${viewModel.targetWeight.round()}kg",
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 
   Widget _buildActivityLevel(OnboardingViewmodel viewModel) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Activity Level",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<ActivityLevel>(
-            value: viewModel.activityLevel,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Activity Level",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<ActivityLevel>(
+          value: viewModel.activityLevel,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            items: ActivityLevel.values.map((level) {
-              return DropdownMenuItem(
-                value: level,
-                child: Text(_formatActivityLevel(level)),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                viewModel.setActivityLevel(value);
-              }
-            },
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
-        ],
-      ),
+          items: ActivityLevel.values.map((level) {
+            return DropdownMenuItem(
+              value: level,
+              child: Text(_formatActivityLevel(level)),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              viewModel.setActivityLevel(value);
+            }
+          },
+        ),
+      ],
     );
   }
 
@@ -900,27 +935,29 @@ class _OnboardingPageViewState extends State<OnboardingPageView> {
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-              onPressed: (_currentPage == 1 &&
-                      viewModel.dietaryRestrictions.isEmpty)
-                  ? null
-                  : () async {
-                      if (_currentPage < _buildPages(viewModel).length - 1) {
-                        _pageController.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      } else {
-                        try {
-                          await viewModel.finalizeOnboarding(context);
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString())),
-                            );
-                          }
-                        }
-                      }
-                    },
+              onPressed: () async {
+                if (_currentPage < _buildPages(viewModel).length - 1) {
+                  _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                } else {
+                  try {
+                    await viewModel.finalizeOnboarding(context);
+                  } catch (e, stackTrace) {
+                    if (context.mounted) {
+                      debugPrint('Error in finalizeOnboarding: $e');
+                      debugPrint('Stack trace: $stackTrace');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
               child: Text(
                 _currentPage == _buildPages(viewModel).length - 1
                     ? "Complete Registration"

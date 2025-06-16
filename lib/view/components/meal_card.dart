@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:bitewise/assets/meal_images.dart';
+import 'package:bitewise/view/components/popup_notification.dart';
 
 class MealCard extends StatelessWidget {
   final Meal meal;
@@ -112,10 +113,19 @@ class MealCard extends StatelessWidget {
                             .read<MealsViewmodel>()
                             .addMealToTodayIntake(meal);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Meal added to today!')),
+                          final overlay = Overlay.of(context);
+                          late final OverlayEntry overlayEntry;
+                          overlayEntry = OverlayEntry(
+                            builder: (context) => PopupNotification(
+                              message: '${meal.name} added to today\'s intake!',
+                              type: PopupNotificationType.success,
+                              duration: const Duration(seconds: 2),
+                              onClose: () {
+                                overlayEntry.remove();
+                              },
+                            ),
                           );
+                          overlay.insert(overlayEntry);
                         }
                       },
                       child: Container(

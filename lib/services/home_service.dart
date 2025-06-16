@@ -3,11 +3,13 @@ import 'package:bitewise/services/firebase_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';
 import 'package:bitewise/models/meal_model.dart';
+import 'package:bitewise/services/interfaces/i_home_service.dart';
 
-class HomeService {
+class HomeService implements IHomeService {
   final FirebaseService _firebaseService = FirebaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  @override
   Future<HomeData> fetchHomeData(String userId) async {
     print("fetchHomeData");
     // 1. User info

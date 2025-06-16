@@ -13,6 +13,7 @@ class OnboardingViewmodel extends ChangeNotifier {
   List<Goal> healthGoals = [];
   double height = 170;
   double weight = 70;
+  double targetWeight = 70;
   ActivityLevel activityLevel = ActivityLevel.sedentary;
   int dailyCalorieTarget = 2000;
   Gender gender = Gender.male;
@@ -37,6 +38,7 @@ class OnboardingViewmodel extends ChangeNotifier {
   UserModel get userPreferences => UserModel(
         height: height,
         weight: weight,
+        targetWeight: targetWeight,
         activityLevel: activityLevel,
         dietaryRestrictions: dietaryRestrictions,
         healthGoals: healthGoals,
@@ -62,6 +64,11 @@ class OnboardingViewmodel extends ChangeNotifier {
 
   void setWeight(double weight) {
     this.weight = weight;
+    notifyListeners();
+  }
+
+  void setTargetWeight(double targetWeight) {
+    this.targetWeight = targetWeight;
     notifyListeners();
   }
 
@@ -111,20 +118,46 @@ class OnboardingViewmodel extends ChangeNotifier {
   }
 
   Future<void> finalizeOnboarding(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_seen', true);
+    try {
+      debugPrint('Starting finalizeOnboarding...');
+      final prefs = await SharedPreferences.getInstance();
+      debugPrint('Got SharedPreferences instance');
 
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context, userPreferences);
-    } else {
-      Navigator.pushReplacementNamed(
-        context,
-        Routes.authPageKey,
-        arguments: {
-          'mode': AuthMode.signup,
-          'preferences': userPreferences,
-        },
-      );
+      await prefs.setBool('onboarding_seen', true);
+      await prefs.setBool('register_onboarding', true);
+      debugPrint('Set onboarding flags in SharedPreferences');
+
+      if (context.mounted) {
+        debugPrint('Context is mounted, checking navigation...');
+        if (Navigator.canPop(context)) {
+          debugPrint('Can pop - returning to previous screen with preferences');
+          Navigator.pop(context, userPreferences);
+        } else {
+          debugPrint('Cannot pop - navigating to signup');
+          try {
+            debugPrint('Attempting to navigate to auth page with mode: signup');
+            debugPrint('User preferences: ${userPreferences.toString()}');
+
+            await Navigator.pushReplacementNamed(
+              context,
+              Routes.authPageKey,
+              arguments: {
+                'mode': AuthMode.signup,
+                'preferences': userPreferences,
+              },
+            );
+            debugPrint('Navigation completed successfully');
+          } catch (navError) {
+            debugPrint('Navigation error: $navError');
+            rethrow;
+          }
+        }
+      } else {
+        debugPrint('Context is not mounted');
+      }
+    } catch (e) {
+      debugPrint('Error in finalizeOnboarding: $e');
+      rethrow;
     }
   }
 

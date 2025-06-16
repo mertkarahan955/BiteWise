@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:bitewise/viewmodel/meals_viewmodel.dart';
-import 'package:bitewise/models/meal_model.dart';
-import 'package:bitewise/view/meal_details_view.dart';
 import 'package:bitewise/view/components/meal_card.dart';
 import 'package:bitewise/view/components/popup_notification.dart';
+import 'package:bitewise/view/components/shimmer_widgets.dart';
 
 class MealsView extends StatefulWidget {
   const MealsView({super.key});
@@ -16,6 +14,7 @@ class MealsView extends StatefulWidget {
 
 class _MealsViewState extends State<MealsView> {
   String selectedWeek = 'This Week';
+  bool _isInitialLoad = true;
 
   @override
   void initState() {
@@ -23,6 +22,10 @@ class _MealsViewState extends State<MealsView> {
     // Load initial meal plan
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MealsViewmodel>().loadMealPlanByWeek(selectedWeek);
+      // Set isInitialLoad to false after the first load attempt
+      setState(() {
+        _isInitialLoad = false;
+      });
     });
   }
 
@@ -85,7 +88,7 @@ class _MealsViewState extends State<MealsView> {
             ),
           ),
           // Only this widget will rebuild when meal plan changes
-          Expanded(child: MealPlans()),
+          Expanded(child: MealPlans(isInitialLoad: _isInitialLoad)),
         ],
       ),
     );
@@ -93,14 +96,19 @@ class _MealsViewState extends State<MealsView> {
 }
 
 class MealPlans extends StatelessWidget {
-  const MealPlans({super.key});
+  final bool isInitialLoad;
+
+  const MealPlans({
+    super.key,
+    required this.isInitialLoad,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Consumer<MealsViewmodel>(
       builder: (context, viewModel, child) {
         if (viewModel.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const ShimmerMealPlans();
         }
 
         if (viewModel.error != null) {
@@ -126,8 +134,13 @@ class MealPlans extends StatelessWidget {
         }
 
         final mealPlan = viewModel.mealPlan;
-        if (mealPlan == null) {
-          // Show popup notification
+        print(
+            'Current meal plan state: ${mealPlan != null ? 'Has plan' : 'No plan'}');
+
+        // Only show popup if we're not in initial load and there's no meal plan
+        if (mealPlan == null && !viewModel.isLoading && !isInitialLoad) {
+          print('Showing popup notification for meal plan generation');
+          // Show popup notification only if there's no meal plan and we're not loading
           WidgetsBinding.instance.addPostFrameCallback((_) {
             final overlay = Overlay.of(context);
             late final OverlayEntry overlayEntry;
@@ -152,6 +165,10 @@ class MealPlans extends StatelessWidget {
               style: TextStyle(fontSize: 18),
             ),
           );
+        }
+
+        if (mealPlan == null) {
+          return const ShimmerMealPlans();
         }
 
         return ListView.separated(

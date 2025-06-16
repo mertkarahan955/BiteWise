@@ -1,12 +1,14 @@
 import 'package:bitewise/models/user_model.dart';
-import 'package:bitewise/services/firebase_service.dart';
+import 'package:bitewise/services/interfaces/i_firebase_service.dart';
+import 'package:bitewise/services/interfaces/i_profile_service.dart';
 import 'package:bitewise/view/auth_view.dart';
 import 'package:bitewise/utils/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthViewmodel extends ChangeNotifier {
-  final FirebaseService _firebaseService = FirebaseService();
+  final IFirebaseService _firebaseService;
+  final IProfileService _profileService;
   UserModel? _onboardingPreferences;
 
   // Form controllers
@@ -33,7 +35,13 @@ class AuthViewmodel extends ChangeNotifier {
   AuthMode get mode => _mode;
   bool get isLoading => _isLoading;
 
-  AuthViewmodel({required AuthMode initialMode}) : _mode = initialMode;
+  AuthViewmodel(
+      {required AuthMode initialMode,
+      required IFirebaseService firebaseService,
+      required IProfileService profileService})
+      : _mode = initialMode,
+        _firebaseService = firebaseService,
+        _profileService = profileService;
 
   // Restore form data after returning from onboarding
   void _restoreFormData() {
@@ -81,8 +89,12 @@ class AuthViewmodel extends ChangeNotifier {
       } else {
         // Check if user has completed onboarding
         final prefs = await SharedPreferences.getInstance();
+        final registerOnboarding =
+            prefs.getBool('register_onboarding') ?? false;
         final onboardingSeen = prefs.getBool('onboarding_seen') ?? false;
-        if (_onboardingPreferences == null && !onboardingSeen) {
+        if (_onboardingPreferences == null &&
+            !onboardingSeen &&
+            !registerOnboarding) {
           if (context.mounted) {
             // Show dialog to inform user about onboarding
             final shouldProceed = await showDialog<bool>(
@@ -90,22 +102,17 @@ class AuthViewmodel extends ChangeNotifier {
               builder: (context) => AlertDialog(
                 title: const Text('Complete Onboarding First'),
                 content: const Text(
-                  'To provide you with the best experience, please complete the onboarding process first. This will help us personalize your experience.',
-                ),
+                    'To provide you with the best experience, please complete the onboarding process first. This will help us personalize your experience.'),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel'),
-                  ),
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Cancel')),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                    ),
-                    child: const Text(
-                      'Go to Onboarding',
-                      style: TextStyle(color: Colors.white),
-                    ),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                    child: const Text('Go to Onboarding',
+                        style: TextStyle(color: Colors.white)),
                   ),
                 ],
               ),
@@ -113,10 +120,8 @@ class AuthViewmodel extends ChangeNotifier {
 
             if (shouldProceed == true && context.mounted) {
               // Navigate to onboarding and wait for result
-              final result = await Navigator.pushNamed(
-                context,
-                Routes.onboardingPageKey,
-              );
+              final result =
+                  await Navigator.pushNamed(context, Routes.onboardingPageKey);
 
               // If we got preferences back from onboarding
               if (result is UserModel) {
@@ -157,10 +162,7 @@ class AuthViewmodel extends ChangeNotifier {
       throw Exception('Please fill all fields');
     }
 
-    await _firebaseService.signIn(
-      email: email,
-      password: password,
-    );
+    await _firebaseService.signIn(email: email, password: password);
   }
 
   Future<void> _signup() async {
@@ -175,18 +177,12 @@ class AuthViewmodel extends ChangeNotifier {
 
     // Sign up the user
     final userCredential = await _firebaseService.signUp(
-      email: email,
-      password: password,
-      name: name,
-      phone: phone,
-    );
+        email: email, password: password, name: name, phone: phone);
 
     // If we have onboarding preferences, save them
     if (_onboardingPreferences != null) {
-      await _firebaseService.saveUserPreferences(
-        userId: userCredential.user!.uid,
-        userModel: _onboardingPreferences!,
-      );
+      await _profileService.saveUserPreferences(
+          userId: userCredential.user!.uid, userModel: _onboardingPreferences!);
       await _setOnboardingSeen();
     }
   }
@@ -201,12 +197,10 @@ class AuthViewmodel extends ChangeNotifier {
     // Remove onboarding_seen from cache
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('onboarding_seen');
+    await prefs.remove('register_onboarding');
     if (context.mounted) {
-      Navigator.pushReplacementNamed(
-        context,
-        Routes.authPageKey,
-        arguments: AuthMode.login,
-      );
+      Navigator.pushReplacementNamed(context, Routes.authPageKey,
+          arguments: AuthMode.login);
     }
   }
 

@@ -5,83 +5,88 @@ import 'package:bitewise/models/goal.dart';
 enum Gender { male, female, other }
 
 class UserModel {
-  final String? name;
-  final String? email;
   final double height;
   final double weight;
+  final double targetWeight;
   final ActivityLevel activityLevel;
-  final List<CommonAllergens> dietaryRestrictions; // common allergens
+  final List<CommonAllergens> dietaryRestrictions;
   final List<Goal> healthGoals;
   final int dailyCalorieTarget;
   final Gender gender;
   final int age;
+  final String? name;
+  final String? email;
 
   UserModel({
-    this.name,
-    this.email,
     required this.height,
     required this.weight,
+    required this.targetWeight,
     required this.activityLevel,
     required this.dietaryRestrictions,
     required this.healthGoals,
     required this.dailyCalorieTarget,
     required this.gender,
     required this.age,
+    this.name,
+    this.email,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'name': name,
-      'email': email,
       'height': height,
       'weight': weight,
-      'activityLevel': activityLevel.toString().split('.').last,
+      'targetWeight': targetWeight,
+      'activityLevel': activityLevel.toString(),
       'dietaryRestrictions':
-          dietaryRestrictions.map((e) => e.toString().split('.').last).toList(),
-      'healthGoals':
-          healthGoals.map((e) => e.toString().split('.').last).toList(),
+          dietaryRestrictions.map((e) => e.toString()).toList(),
+      'healthGoals': healthGoals.map((e) => e.toString()).toList(),
       'dailyCalorieTarget': dailyCalorieTarget,
-      'gender': gender.toString().split('.').last,
+      'gender': gender.toString(),
       'age': age,
+      'name': name,
+      'email': email,
     };
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      name: json['name'] as String?,
-      email: json['email'] as String?,
-      height: (json['height'] as num?)?.toDouble() ?? 170.0,
-      weight: (json['weight'] as num?)?.toDouble() ?? 70.0,
+      height: json['height']?.toDouble() ?? 0.0,
+      weight: json['weight']?.toDouble() ?? 0.0,
+      targetWeight: json['targetWeight']?.toDouble() ?? 0.0,
       activityLevel: ActivityLevel.values.firstWhere(
-        (e) => e.toString() == 'ActivityLevel.' + (json['activityLevel'] ?? ''),
+        (e) => e.toString() == json['activityLevel'],
         orElse: () => ActivityLevel.sedentary,
       ),
-      dietaryRestrictions: (json['dietaryRestrictions'] as List?)
-              ?.map((e) {
-                try {
-                  return CommonAllergens.values.firstWhere(
-                    (a) => a.toString() == e.toString(),
-                  );
-                } catch (_) {
-                  return null;
-                }
-              })
-              .whereType<CommonAllergens>()
-              .toList() ??
-          [],
-      healthGoals: (json['healthGoals'] as List?)
-              ?.map((e) => Goal.values.firstWhere(
-                    (g) => g.toString() == 'Goal.' + e,
-                    orElse: () => Goal.loseWeight,
+      dietaryRestrictions: (json['dietaryRestrictions'] as List<dynamic>?)
+              ?.map((e) => CommonAllergens.values.firstWhere(
+                    (a) => a.toString() == e,
+                    orElse: () => CommonAllergens.gluten,
                   ))
               .toList() ??
           [],
-      dailyCalorieTarget: json['dailyCalorieTarget'] as int? ?? 2000,
+      healthGoals: (json['healthGoals'] as List<dynamic>?)
+              ?.map((e) => Goal.values.firstWhere(
+                    (g) => g.toString() == e,
+                    orElse: () => Goal.maintainWellness,
+                  ))
+              .toList() ??
+          [],
+      dailyCalorieTarget: json['dailyCalorieTarget'] ?? 2000,
       gender: Gender.values.firstWhere(
-        (g) => g.toString() == 'Gender.' + (json['gender'] ?? 'male'),
+        (e) => e.toString() == json['gender'],
         orElse: () => Gender.male,
       ),
-      age: json['age'] as int? ?? 25,
+      age: json['age'] ?? 25,
+      name: json['name'],
+      email: json['email'],
     );
+  }
+
+  @override
+  String toString() {
+    return 'UserModel(height: $height, weight: $weight, targetWeight: $targetWeight, '
+        'activityLevel: $activityLevel, dietaryRestrictions: $dietaryRestrictions, '
+        'healthGoals: $healthGoals, dailyCalorieTarget: $dailyCalorieTarget, '
+        'gender: $gender, age: $age, name: $name, email: $email)';
   }
 }

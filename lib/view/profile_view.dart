@@ -1,6 +1,7 @@
 import 'package:bitewise/models/activity_level.dart';
 import 'package:bitewise/models/allergens_model.dart';
 import 'package:bitewise/models/goal.dart';
+import 'package:bitewise/models/daily_intake.dart';
 import 'package:bitewise/viewmodel/profile_viewmodel.dart';
 import 'package:bitewise/viewmodel/auth_viewmodel.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:bitewise/models/user_model.dart';
 import 'package:bitewise/models/weight_entry.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfileView extends StatelessWidget {
   const ProfileView({super.key});
@@ -39,7 +41,7 @@ class ProfileView extends StatelessWidget {
                         context.read<AuthViewmodel>().logout(context);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                        backgroundColor: Colors.blue.shade700,
                       ),
                       child: const Text(
                         'Logout',
@@ -70,7 +72,7 @@ class ProfileView extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => viewModel.loadUserProfile(),
+                    onPressed: () => viewModel.loadUserData(),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -78,7 +80,7 @@ class ProfileView extends StatelessWidget {
             );
           }
 
-          final user = viewModel.user;
+          final user = viewModel.userData;
           if (user == null) {
             return const Center(
               child: Text('No user data available'),
@@ -90,10 +92,68 @@ class ProfileView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Profile Header with Avatar
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 2,
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.grey[100],
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.name ?? 'Not set',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                user.email ?? 'Not set',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 // Weight Card
                 WeightCardPager(
                   currentWeight: viewModel.currentWeight,
-                  targetWeight: viewModel.targetWeight,
                   onWeightChanged: (newWeight) async {
                     await viewModel.updateTodayWeight(newWeight);
                     await viewModel.loadWeightHistory();
@@ -106,7 +166,19 @@ class ProfileView extends StatelessWidget {
                 StreamBuilder(
                   stream: context.read<ProfileViewmodel>().todayIntakeStream,
                   builder: (context, snapshot) {
-                    final intake = snapshot.data;
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final doc = snapshot.data as DocumentSnapshot;
+                    final intake = doc.exists
+                        ? DailyIntake.fromMap(
+                            doc.data() as Map<String, dynamic>)
+                        : null;
                     return ProgressTrackerCard(user: user, intake: intake);
                   },
                 ),
@@ -116,20 +188,25 @@ class ProfileView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   elevation: 2,
+                  color: Colors.white,
                   margin: const EdgeInsets.only(bottom: 20),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: _buildSection(
                       'Personal Information',
                       [
-                        _buildInfoRow('Name', user.name ?? 'Not set'),
-                        _buildInfoRow('Email', user.email ?? 'Not set'),
-                        _buildInfoRow('Height', '${user.height} cm'),
-                        _buildInfoRow('Weight', '${user.weight} kg'),
-                        _buildInfoRow('Activity Level',
-                            _formatActivityLevel(user.activityLevel)),
-                        _buildInfoRow('Daily Calorie Target',
-                            '${user.dailyCalorieTarget} kcal'),
+                        _buildInfoRow(
+                            'Height', '${user.height} cm', Icons.height),
+                        _buildInfoRow('Weight', '${user.weight} kg',
+                            Icons.monitor_weight),
+                        _buildInfoRow(
+                            'Activity Level',
+                            _formatActivityLevel(user.activityLevel),
+                            Icons.directions_run),
+                        _buildInfoRow(
+                            'Daily Calorie Target',
+                            '${user.dailyCalorieTarget} kcal',
+                            Icons.local_fire_department),
                       ],
                     ),
                   ),
@@ -139,6 +216,7 @@ class ProfileView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   elevation: 2,
+                  color: Colors.white,
                   margin: const EdgeInsets.only(bottom: 20),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
@@ -151,9 +229,11 @@ class ProfileView extends StatelessWidget {
                           children: user.dietaryRestrictions.map((allergen) {
                             return Chip(
                               label: Text(_formatAllergenName(allergen)),
-                              backgroundColor: Colors.grey[200],
-                              labelStyle:
-                                  const TextStyle(fontWeight: FontWeight.w500),
+                              backgroundColor: Colors.grey[100],
+                              labelStyle: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[800],
+                              ),
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               shape: RoundedRectangleBorder(
@@ -178,13 +258,23 @@ class ProfileView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+        Row(
+          children: [
+            Icon(
+              _getSectionIcon(title),
+              color: Colors.grey[700],
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         ...children,
@@ -192,24 +282,47 @@ class ProfileView extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  IconData _getSectionIcon(String title) {
+    switch (title) {
+      case 'Personal Information':
+        return Icons.person_outline;
+      case 'Dietary Restrictions':
+        return Icons.restaurant;
+      case 'Current Goals':
+        return Icons.flag;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  Widget _buildInfoRow(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
           ),
           Text(
             value,
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: Colors.black,
             ),
           ),
@@ -256,7 +369,7 @@ class ProgressTrackerCard extends StatelessWidget {
       this.waterTarget});
 
   Widget _buildStatProgress(String label, int value, int target,
-      {String? unit}) {
+      {String? unit, IconData? icon}) {
     double percent = value / target;
     if (percent > 1) percent = 1;
     return Column(
@@ -265,28 +378,40 @@ class ProgressTrackerCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 14, color: Colors.black),
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(
+                    icon,
+                    size: 20,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 16, color: Colors.black87),
+                ),
+              ],
             ),
             Text(
               unit != null ? '$value/$target $unit' : '$value/$target',
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF5B5FE9),
+                color: Colors.blue.shade700,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
             value: percent,
             minHeight: 8,
             backgroundColor: Colors.grey[200],
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF5B5FE9)),
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
           ),
         ),
       ],
@@ -301,7 +426,6 @@ class ProgressTrackerCard extends StatelessWidget {
     final int proteinTarget = this.proteinTarget ?? 80;
     final int water = intake?.totalWater ?? 0;
     final int waterTarget = this.waterTarget ?? 8;
-    final int adherence = 85;
     final double progress =
         calorieTarget > 0 ? (calories / calorieTarget).clamp(0, 1) : 0.0;
 
@@ -311,7 +435,8 @@ class ProgressTrackerCard extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 3,
+          elevation: 2,
+          color: Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Column(
@@ -323,33 +448,43 @@ class ProgressTrackerCard extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Current Goals',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.flag,
+                              color: Colors.grey[700],
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Current Goals',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: 250,
                           child: GridView.count(
                             crossAxisCount: 2,
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: 5,
-                            crossAxisSpacing: 5,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
                             childAspectRatio: 1.80,
                             children: user.healthGoals.map((goal) {
                               final iconPath = _getGoalIconPath(goal);
                               return Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[200],
+                                  color: Colors.grey[100],
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
+                                    horizontal: 12, vertical: 8),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.max,
                                   mainAxisAlignment:
@@ -358,19 +493,23 @@ class ProgressTrackerCard extends StatelessWidget {
                                     if (iconPath != null)
                                       Padding(
                                         padding:
-                                            const EdgeInsets.only(right: 12.0),
+                                            const EdgeInsets.only(right: 8.0),
                                         child: SvgPicture.asset(
                                           iconPath,
                                           width: 20,
                                           height: 20,
+                                          colorFilter: ColorFilter.mode(
+                                              Colors.grey[700]!,
+                                              BlendMode.srcIn),
                                         ),
                                       ),
                                     Flexible(
                                       child: Text(
                                         _formatGoal(goal),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontWeight: FontWeight.w500,
-                                            fontSize: 12),
+                                            fontSize: 12,
+                                            color: Colors.grey[800]),
                                         softWrap: true,
                                       ),
                                     ),
@@ -386,40 +525,44 @@ class ProgressTrackerCard extends StatelessWidget {
                       alignment: Alignment.center,
                       children: [
                         SizedBox(
-                          width: 56,
-                          height: 56,
+                          width: 64,
+                          height: 64,
                           child: CircularProgressIndicator(
                             value: progress,
                             strokeWidth: 6,
                             backgroundColor: Colors.grey[200],
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF5B5FE9)),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.blue.shade700),
                           ),
                         ),
                         Text(
                           '${(progress * 100).toInt()}%',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF5B5FE9),
+                            color: Colors.blue.shade700,
                           ),
                         ),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                _buildStatProgress('Calories', calories, calorieTarget),
-                const SizedBox(height: 8),
-                _buildStatProgress('Protein', protein, proteinTarget),
-                const SizedBox(height: 8),
+                const SizedBox(height: 24),
+                _buildStatProgress('Calories', calories, calorieTarget,
+                    icon: Icons.local_fire_department),
+                const SizedBox(height: 16),
+                _buildStatProgress('Protein', protein, proteinTarget,
+                    icon: Icons.fitness_center),
+                const SizedBox(height: 16),
                 _buildStatProgress(
-                    'Carbs', intake?.totalCarbs?.round() ?? 0, 250),
-                const SizedBox(height: 8),
-                _buildStatProgress('Fat', intake?.totalFat?.round() ?? 0, 70),
-                const SizedBox(height: 8),
-                _buildStatProgress('Water', water, waterTarget, unit: 'cups'),
-                const SizedBox(height: 20),
+                    'Carbs', intake?.totalCarbs?.round() ?? 0, 250,
+                    icon: Icons.grain),
+                const SizedBox(height: 16),
+                _buildStatProgress('Fat', intake?.totalFat?.round() ?? 0, 70,
+                    icon: Icons.water_drop),
+                const SizedBox(height: 16),
+                _buildStatProgress('Water', water, waterTarget,
+                    unit: 'cups', icon: Icons.local_drink),
               ],
             ),
           ),
@@ -430,20 +573,31 @@ class ProgressTrackerCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 2,
+          color: Colors.white,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Water Intake',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.black,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.local_drink,
+                      color: Colors.grey[700],
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Water Intake',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _buildWaterCupsRow(context, water, waterTarget),
               ],
             ),
@@ -474,25 +628,38 @@ class ProgressTrackerCard extends StatelessWidget {
 
   Widget _buildWaterCupsRow(BuildContext context, int water, int waterTarget) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(waterTarget, (index) {
+      spacing: 12,
+      runSpacing: 12,
+      children: List.generate(
+          waterTarget + (water >= waterTarget ? water - waterTarget + 1 : 0),
+          (index) {
         final isFilled = index < water;
         return GestureDetector(
           onTap: () {
-            // Update water intake when a cup is tapped
             if (index < water) {
               // If tapping a filled cup, decrease water intake
               context.read<ProfileViewmodel>().updateWaterIntake(water - 1);
-            } else {
-              // If tapping an empty cup, increase water intake
+            } else if (index < waterTarget || water >= waterTarget) {
+              // If tapping an empty cup within target or after reaching target, increase water intake
               context.read<ProfileViewmodel>().updateWaterIntake(water + 1);
             }
           },
-          child: Icon(
-            Icons.local_drink,
-            size: 32,
-            color: isFilled ? const Color(0xFF5B5FE9) : Colors.grey[300],
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isFilled ? Colors.blue.shade700 : Colors.grey[100],
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isFilled ? Colors.blue.shade700 : Colors.grey[300]!,
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              Icons.local_drink,
+              size: 24,
+              color: isFilled ? Colors.white : Colors.grey[400],
+            ),
           ),
         );
       }),
@@ -502,14 +669,12 @@ class ProgressTrackerCard extends StatelessWidget {
 
 class WeightCardPager extends StatefulWidget {
   final double? currentWeight;
-  final double? targetWeight;
   final void Function(double) onWeightChanged;
   final bool isLoading;
   final List<WeightEntry> weightHistory;
 
   const WeightCardPager({
     required this.currentWeight,
-    required this.targetWeight,
     required this.onWeightChanged,
     required this.isLoading,
     required this.weightHistory,
@@ -529,14 +694,13 @@ class _WeightCardPagerState extends State<WeightCardPager> {
     return Column(
       children: [
         SizedBox(
-          height: 220,
+          height: 200, // Increased height to accommodate both weight fields
           child: PageView(
             controller: _controller,
             onPageChanged: (i) => setState(() => _page = i),
             children: [
               WeightCard(
                 currentWeight: widget.currentWeight,
-                targetWeight: widget.targetWeight,
                 onWeightChanged: widget.onWeightChanged,
                 isLoading: widget.isLoading,
               ),
@@ -555,9 +719,8 @@ class _WeightCardPagerState extends State<WeightCardPager> {
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _page == i
-                          ? const Color(0xFF5B5FE9)
-                          : Colors.grey[400],
+                      color:
+                          _page == i ? Colors.blue.shade700 : Colors.grey[400],
                     ),
                   )),
         ),
@@ -668,7 +831,7 @@ class WeightHistoryChart extends StatelessWidget {
                     LineChartBarData(
                       spots: spots,
                       isCurved: true,
-                      color: Color(0xFF5B5FE9),
+                      color: Colors.blue.shade700,
                       barWidth: 3,
                       dotData: FlDotData(show: false),
                     ),
@@ -683,133 +846,166 @@ class WeightHistoryChart extends StatelessWidget {
   }
 }
 
-class WeightCard extends StatelessWidget {
+class WeightCard extends StatefulWidget {
   final double? currentWeight;
-  final double? targetWeight;
   final void Function(double) onWeightChanged;
   final bool isLoading;
 
   const WeightCard({
     required this.currentWeight,
-    required this.targetWeight,
     required this.onWeightChanged,
     this.isLoading = false,
     super.key,
   });
 
   @override
+  State<WeightCard> createState() => _WeightCardState();
+}
+
+class _WeightCardState extends State<WeightCard> {
+  late TextEditingController _currentWeightController;
+  late FocusNode _currentWeightFocus;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentWeightController = TextEditingController(
+      text: widget.currentWeight?.toString() ?? "-",
+    );
+    _currentWeightFocus = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _currentWeightController.dispose();
+    _currentWeightFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(WeightCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentWeight != oldWidget.currentWeight) {
+      final newText = widget.currentWeight?.toString() ?? "-";
+      if (_currentWeightController.text != newText) {
+        _currentWeightController.text = newText;
+      }
+    }
+  }
+
+  void _handleCurrentWeightChange(String value) {
+    final newWeight = double.tryParse(value);
+    if (newWeight != null && newWeight > 0 && newWeight < 999) {
+      widget.onWeightChanged(newWeight);
+    } else {
+      _currentWeightController.text = widget.currentWeight?.toString() ?? "-";
+    }
+    _currentWeightFocus.unfocus();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.grey[200],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  const SizedBox(height: 8),
-                  const Text('Weight',
-                      style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20)),
-                  Text('Target: ${targetWeight?.toStringAsFixed(1) ?? "-"} kg',
-                      style: const TextStyle(color: Colors.black54)),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline,
-                            color: Colors.black, size: 40),
-                        onPressed: () {
-                          if (currentWeight != null) {
-                            onWeightChanged(
-                                (currentWeight! - 0.1).clamp(0, 999));
-                          }
-                        },
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          if (currentWeight != null) {
-                            final controller = TextEditingController(
-                              text: currentWeight!.toStringAsFixed(1),
-                            );
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Enter Weight'),
-                                content: TextField(
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                          decimal: true),
-                                  autofocus: true,
-                                  decoration: const InputDecoration(
-                                    suffixText: 'kg',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  controller: controller,
-                                  onSubmitted: (value) {
-                                    final newWeight = double.tryParse(value);
-                                    if (newWeight != null &&
-                                        newWeight > 0 &&
-                                        newWeight < 999) {
-                                      onWeightChanged(newWeight);
-                                      Navigator.pop(context);
-                                    }
-                                  },
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      final value = controller.text;
-                                      final newWeight = double.tryParse(value);
-                                      if (newWeight != null &&
-                                          newWeight > 0 &&
-                                          newWeight < 999) {
-                                        onWeightChanged(newWeight);
-                                        Navigator.pop(context);
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.black,
-                                    ),
-                                    child: const Text(
-                                      'Save',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                        },
-                        child: Text(
-                            '${currentWeight?.toStringAsFixed(1) ?? "-"} kg',
-                            style: const TextStyle(
-                                color: Colors.black,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        _handleCurrentWeightChange(_currentWeightController.text);
+      },
+      child: Card(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: widget.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.monitor_weight,
+                          color: Colors.grey[700],
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Current Weight',
+                          style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.remove_circle_outline,
+                              color: Colors.grey[600], size: 40),
+                          onPressed: () {
+                            if (widget.currentWeight != null) {
+                              widget.onWeightChanged(
+                                  (widget.currentWeight! - 0.1).clamp(0, 999));
+                            }
+                          },
+                        ),
+                        SizedBox(
+                          width: 160,
+                          child: TextField(
+                            controller: _currentWeightController,
+                            focusNode: _currentWeightFocus,
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            decoration: InputDecoration(
+                              suffixText: 'kg',
+                              suffixStyle: TextStyle(
+                                color: Colors.blue.shade700,
                                 fontSize: 40,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline,
-                            color: Colors.black, size: 40),
-                        onPressed: () {
-                          if (currentWeight != null) {
-                            onWeightChanged(
-                                (currentWeight! + 0.1).clamp(0, 999));
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                                fontWeight: FontWeight.bold,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            onSubmitted: _handleCurrentWeightChange,
+                            onTap: () {
+                              _currentWeightController.selection =
+                                  TextSelection(
+                                baseOffset: 0,
+                                extentOffset:
+                                    _currentWeightController.text.length,
+                              );
+                            },
+                            onEditingComplete: () {
+                              _handleCurrentWeightChange(
+                                  _currentWeightController.text);
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.add_circle_outline,
+                              color: Colors.grey[600], size: 40),
+                          onPressed: () {
+                            if (widget.currentWeight != null) {
+                              widget.onWeightChanged(
+                                  (widget.currentWeight! + 0.1).clamp(0, 999));
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }

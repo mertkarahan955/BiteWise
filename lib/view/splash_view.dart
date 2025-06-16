@@ -24,14 +24,7 @@ class _SplashViewState extends State<SplashView> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ImageTransformers(ImageConstants.logo).svgLogo,
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(),
-          ],
-        ),
+        child: ImageTransformers(ImageConstants.logo).svgLogo,
       ),
     );
   }

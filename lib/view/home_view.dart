@@ -1,4 +1,5 @@
 import 'package:bitewise/view/components/meal_card.dart';
+import 'package:bitewise/view/components/shimmer_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:io' show Platform;
@@ -19,7 +20,6 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   void didChangeDependencies() {
     super.didChangeDependencies();
     WidgetsBinding.instance.addObserver(this);
-    context.read<HomeViewmodel>().fetchDailyIntake();
   }
 
   @override
@@ -31,7 +31,10 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      context.read<HomeViewmodel>().fetchDailyIntake();
+      final userId = context.read<HomeViewmodel>().userId;
+      if (userId != null) {
+        context.read<HomeViewmodel>().loadHomeData(userId: userId);
+      }
     }
   }
 
@@ -40,98 +43,132 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F4),
       body: SafeArea(
-        child: Platform.isIOS
-            ? CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  CupertinoSliverRefreshControl(
-                    onRefresh: () async {
-                      print("onRefresh");
-                      final homeViewmodel = context.read<HomeViewmodel>();
-                      final userId = homeViewmodel.userId;
-                      if (userId != null) {
-                        print("userId: $userId");
-                        await homeViewmodel.loadHomeData(userId: userId);
-                      }
-                    },
-                  ),
-                  SliverToBoxAdapter(
-                    child: Column(
-                      children: [
-                        const _HeaderWidget(),
-                        const _WeatherBannerWidget(),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
-                            children: const [
-                              Expanded(child: CalorieWidget()),
-                              Expanded(child: WaterTrackerWidget()),
+        child: Consumer<HomeViewmodel>(
+          builder: (context, viewModel, child) {
+            if (viewModel.userId != null &&
+                viewModel.homeData == null &&
+                !viewModel.isLoading) {
+              Future.microtask(
+                  () => viewModel.loadHomeData(userId: viewModel.userId!));
+            }
+
+            return Column(
+              children: [
+                // Fixed Header
+                viewModel.isLoading
+                    ? const ShimmerHeaderWidget()
+                    : const _HeaderWidget(),
+                viewModel.isLoading
+                    ? const ShimmerWeatherBannerWidget()
+                    : const _WeatherBannerWidget(),
+
+                // Scrollable Content
+                Expanded(
+                  child: Platform.isIOS
+                      ? CupertinoScrollbar(
+                          child: CustomScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                              CupertinoSliverRefreshControl(
+                                onRefresh: () async {
+                                  print("onRefresh");
+                                  final homeViewmodel =
+                                      context.read<HomeViewmodel>();
+                                  final userId = homeViewmodel.userId;
+                                  if (userId != null) {
+                                    print("userId: $userId");
+                                    await homeViewmodel.loadHomeData(
+                                        userId: userId);
+                                  }
+                                },
+                              ),
+                              SliverToBoxAdapter(
+                                child: Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20),
+                                      child: Row(
+                                        children: const [
+                                          Expanded(child: CalorieWidget()),
+                                          Expanded(child: WaterTrackerWidget()),
+                                        ],
+                                      ),
+                                    ),
+                                    const Padding(
+                                      padding:
+                                          EdgeInsets.fromLTRB(20, 20, 20, 0),
+                                      child: Text('Weekly Progress',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 17)),
+                                    ),
+                                    const WeeklyProgressWidget(),
+                                    const Padding(
+                                      padding:
+                                          EdgeInsets.fromLTRB(20, 20, 20, 0),
+                                      child: Text("Today's Highlights",
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 17)),
+                                    ),
+                                    const MealOfTheDayWidget(),
+                                    const SizedBox(height: 32),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: () async {
+                            print("onRefresh");
+                            final homeViewmodel = context.read<HomeViewmodel>();
+                            final userId = homeViewmodel.userId;
+                            if (userId != null) {
+                              print("userId: $userId");
+                              await homeViewmodel.loadHomeData(userId: userId);
+                            }
+                          },
+                          child: ListView(
+                            padding: const EdgeInsets.all(0),
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                child: Row(
+                                  children: const [
+                                    Expanded(child: CalorieWidget()),
+                                    Expanded(child: WaterTrackerWidget()),
+                                  ],
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+                                child: Text('Weekly Progress',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 17)),
+                              ),
+                              const WeeklyProgressWidget(),
+                              const Padding(
+                                padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+                                child: Text("Today's Highlights",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 17)),
+                              ),
+                              const MealOfTheDayWidget(),
+                              const SizedBox(height: 32),
                             ],
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
-                          child: Text('Weekly Progress',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 17)),
-                        ),
-                        const WeeklyProgressWidget(),
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
-                          child: Text("Today's Highlights",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 17)),
-                        ),
-                        const MealOfTheDayWidget(),
-                        const SizedBox(height: 32),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : RefreshIndicator(
-                onRefresh: () async {
-                  print("onRefresh");
-                  final homeViewmodel = context.read<HomeViewmodel>();
-                  final userId = homeViewmodel.userId;
-                  if (userId != null) {
-                    print("userId: $userId");
-                    await homeViewmodel.loadHomeData(userId: userId);
-                  }
-                },
-                child: ListView(
-                  padding: const EdgeInsets.all(0),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    const _HeaderWidget(),
-                    const _WeatherBannerWidget(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: const [
-                          Expanded(child: CalorieWidget()),
-                          Expanded(child: WaterTrackerWidget()),
-                        ],
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: Text('Weekly Progress',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 17)),
-                    ),
-                    const WeeklyProgressWidget(),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: Text("Today's Highlights",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 17)),
-                    ),
-                    const MealOfTheDayWidget(),
-                    const SizedBox(height: 32),
-                  ],
                 ),
-              ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -228,13 +265,16 @@ class _CalorieWidgetState extends State<CalorieWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    context.read<HomeViewmodel>().fetchDailyIntake();
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<HomeViewmodel>(
       builder: (context, viewModel, child) {
+        if (viewModel.isLoading) {
+          return const ShimmerCalorieWidget();
+        }
+
         final data = viewModel.homeData;
         if (data == null) return const SizedBox.shrink();
         return Container(
@@ -297,13 +337,16 @@ class _WaterTrackerWidgetState extends State<WaterTrackerWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    context.read<HomeViewmodel>().fetchDailyIntake();
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<HomeViewmodel>(
       builder: (context, viewModel, child) {
+        if (viewModel.isLoading) {
+          return const ShimmerWaterTrackerWidget();
+        }
+
         final data = viewModel.homeData;
         if (data == null) return const SizedBox.shrink();
         return Container(
@@ -354,6 +397,10 @@ class WeeklyProgressWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<HomeViewmodel>(
       builder: (context, viewModel, child) {
+        if (viewModel.isLoading) {
+          return const ShimmerWeeklyProgress();
+        }
+
         final data = viewModel.homeData;
         if (data == null) return const SizedBox.shrink();
         final weekly = data.weeklyProgress;
@@ -453,6 +500,10 @@ class MealOfTheDayWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<HomeViewmodel>(
       builder: (context, viewModel, child) {
+        if (viewModel.isLoading) {
+          return const ShimmerMealOfTheDay();
+        }
+
         final data = viewModel.homeData;
         if (data == null) return const SizedBox.shrink();
         return Padding(
